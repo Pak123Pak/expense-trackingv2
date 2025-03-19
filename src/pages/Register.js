@@ -30,6 +30,10 @@ export default function Register() {
         if (password !== confirmPassword) {
             return setError('Passwords do not match');
         }
+
+        if (password.length < 6) {
+            return setError('Password must be at least 6 characters long');
+        }
         
         try {
             setError('');
@@ -38,7 +42,19 @@ export default function Register() {
             navigate('/trips');
         } catch (error) {
             console.error('Registration error:', error);
-            setError(error.message || 'Failed to create an account');
+            
+            // More user-friendly error messages
+            if (error.code === 'auth/email-already-in-use') {
+                setError('This email is already registered. Please use a different email or try to log in.');
+            } else if (error.code === 'auth/invalid-email') {
+                setError('Invalid email address. Please enter a valid email.');
+            } else if (error.code === 'auth/weak-password') {
+                setError('Password is too weak. Please use a stronger password.');
+            } else if (error.code === 'auth/configuration-not-found') {
+                setError('Firebase configuration error. Please ensure Firebase is properly set up.');
+            } else {
+                setError(error.message || 'Failed to create an account. Please try again later.');
+            }
         } finally {
             setLoading(false);
         }
@@ -91,6 +107,7 @@ export default function Register() {
                         autoComplete="new-password"
                         value={password}
                         onChange={(e) => setPassword(e.target.value)}
+                        helperText="Password must be at least 6 characters long"
                     />
                     <TextField
                         margin="normal"

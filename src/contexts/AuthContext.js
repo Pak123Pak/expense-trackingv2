@@ -6,7 +6,7 @@ import {
     signOut,
     updateProfile
 } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -18,36 +18,68 @@ export function useAuth() {
 export function AuthProvider({ children }) {
     const [currentUser, setCurrentUser] = useState(null);
     const [loading, setLoading] = useState(true);
+    const [authError, setAuthError] = useState(null);
 
-    function signup(email, password, displayName) {
-        return createUserWithEmailAndPassword(auth, email, password)
-            .then((userCredential) => {
-                // Set the user's display name
-                return updateProfile(userCredential.user, { displayName })
-                    .then(() => {
-                        // Create user document in Firestore
-                        return setDoc(doc(db, 'users', userCredential.user.uid), {
-                            email,
-                            displayName,
-                            homeCurrency: 'hkd',
-                            createdAt: new Date().toISOString()
-                        });
-                    })
-                    .then(() => userCredential.user);
-            });
+    async function signup(email, password, displayName) {
+        try {
+            // Clear any previous errors
+            setAuthError(null);
+            
+            // Create the user
+            const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+            
+            // Set the user's display name
+            await updateProfile(userCredential.user, { displayName });
+            
+            // Check if user document already exists
+            const userDocRef = doc(db, 'users', userCredential.user.uid);
+            const userDoc = await getDoc(userDocRef);
+            
+            // Create user document in Firestore if it doesn't exist
+            if (!userDoc.exists()) {
+                await setDoc(userDocRef, {
+                    email,
+                    displayName,
+                    homeCurrency: 'hkd',
+                    createdAt: new Date().toISOString()
+                });
+            }
+            
+            return userCredential.user;
+        } catch (error) {
+            console.error("Signup error:", error);
+            setAuthError(error);
+            throw error;
+        }
     }
 
     function login(email, password) {
-        return signInWithEmailAndPassword(auth, email, password);
+        setAuthError(null);
+        return signInWithEmailAndPassword(auth, email, password)
+            .catch(error => {
+                console.error("Login error:", error);
+                setAuthError(error);
+                throw error;
+            });
     }
 
     function logout() {
-        return signOut(auth);
+        setAuthError(null);
+        return signOut(auth)
+            .catch(error => {
+                console.error("Logout error:", error);
+                setAuthError(error);
+                throw error;
+            });
     }
 
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
+            setLoading(false);
+        }, error => {
+            console.error("Auth state changed error:", error);
+            setAuthError(error);
             setLoading(false);
         });
 
@@ -56,6 +88,7 @@ export function AuthProvider({ children }) {
 
     const value = {
         currentUser,
+        authError,
         signup,
         login,
         logout
