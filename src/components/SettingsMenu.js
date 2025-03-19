@@ -1,4 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { 
     Menu, 
     MenuItem, 
@@ -13,11 +14,14 @@ import {
     FormControl,
     InputLabel,
     Select,
-    CircularProgress
+    CircularProgress,
+    Badge
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useNotification } from '../contexts/NotificationContext';
 
 // This is a basic settings menu that will be expanded in future phases
 export default function SettingsMenu() {
@@ -26,8 +30,10 @@ export default function SettingsMenu() {
     const [selectedCurrency, setSelectedCurrency] = useState('');
     const [saving, setSaving] = useState(false);
     
+    const navigate = useNavigate();
     const { logout } = useAuth();
     const { homeCurrency, availableCurrencies, updateHomeCurrency } = useCurrency();
+    const { unreadCount } = useNotification();
     const menuButtonRef = useRef(null);
     
     // Set selected currency when home currency changes
@@ -82,15 +88,36 @@ export default function SettingsMenu() {
             setSaving(false);
         }
     };
+    
+    const handleOpenNotifications = () => {
+        handleCloseSettings();
+        navigate('/notifications');
+    };
 
     return (
         <>
+            <IconButton 
+                color="inherit" 
+                onClick={handleOpenNotifications}
+                sx={{ mr: 1 }}
+            >
+                <Badge badgeContent={unreadCount} color="error">
+                    <NotificationsIcon />
+                </Badge>
+            </IconButton>
+            
             <IconButton 
                 ref={menuButtonRef}
                 color="inherit" 
                 onClick={handleOpenSettings}
             >
-                <SettingsIcon />
+                <Badge 
+                    color="error" 
+                    variant="dot" 
+                    invisible={unreadCount === 0}
+                >
+                    <SettingsIcon />
+                </Badge>
             </IconButton>
             
             <Menu
@@ -106,6 +133,16 @@ export default function SettingsMenu() {
                 <Divider />
                 <MenuItem onClick={handleOpenCurrencyDialog}>
                     Change Home Currency
+                </MenuItem>
+                <MenuItem onClick={handleOpenNotifications}>
+                    Notifications
+                    {unreadCount > 0 && (
+                        <Badge 
+                            badgeContent={unreadCount} 
+                            color="error" 
+                            sx={{ ml: 1 }}
+                        />
+                    )}
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>

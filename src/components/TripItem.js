@@ -10,9 +10,11 @@ import {
     DialogContent,
     DialogContentText,
     DialogActions,
-    Button
+    Button,
+    Chip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
+import PeopleIcon from '@mui/icons-material/People';
 import { useTrip } from '../contexts/TripContext';
 import { useNavigate } from 'react-router-dom';
 
@@ -53,6 +55,9 @@ export default function TripItem({ trip }) {
         }
     };
 
+    // Check if this is a shared trip where the user is not the creator
+    const isSharedTrip = !trip.isCreator;
+
     return (
         <>
             <Paper 
@@ -71,21 +76,35 @@ export default function TripItem({ trip }) {
                 onClick={handleOpenTrip}
             >
                 <Box>
-                    <Typography variant="h6" component="div" sx={{ fontWeight: 'medium' }}>
-                        {trip.name}
-                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                        <Typography variant="h6" component="div" sx={{ fontWeight: 'medium' }}>
+                            {trip.name}
+                        </Typography>
+                        {isSharedTrip && (
+                            <Chip
+                                icon={<PeopleIcon />}
+                                label="Shared"
+                                size="small"
+                                color="primary"
+                                variant="outlined"
+                            />
+                        )}
+                    </Box>
                     <Typography variant="body2" color="text.secondary">
                         Created: {formattedDate}
                     </Typography>
                 </Box>
                 <Box sx={{ position: 'relative' }}>
-                    <IconButton 
-                        color="error" 
-                        onClick={handleOpenConfirmDialog}
-                        disabled={isDeleting}
-                    >
-                        <DeleteIcon />
-                    </IconButton>
+                    {/* Only show delete button for trips the user created */}
+                    {!isSharedTrip && (
+                        <IconButton 
+                            color="error" 
+                            onClick={handleOpenConfirmDialog}
+                            disabled={isDeleting}
+                        >
+                            <DeleteIcon />
+                        </IconButton>
+                    )}
                     {isDeleting && (
                         <CircularProgress
                             size={24}

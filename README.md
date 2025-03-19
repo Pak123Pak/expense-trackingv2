@@ -59,6 +59,17 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - Currency selection in expense forms
 - User settings panel for changing home currency
 
+## Phase 6: Trip Sharing and Collaboration
+
+- Add tripmate functionality with email invitations
+- Notification system for trip invitations
+- Notification badge and management page
+- Shared trip access control
+- UI indicators for shared trips
+- Expanded settings menu with notification access
+- Trip member display in trip details page
+- Permission-based deletion controls
+
 ## Technologies Used
 
 - React

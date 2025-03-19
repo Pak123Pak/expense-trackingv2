@@ -13,16 +13,20 @@ import {
     MenuItem,
     FormControl,
     InputLabel,
-    Select
+    Select,
+    IconButton,
+    Chip
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
-import { doc, getDoc } from 'firebase/firestore';
+import PeopleIcon from '@mui/icons-material/People';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
+import { useTrip } from '../contexts/TripContext';
 import { ExpenseProvider, useExpense } from '../contexts/ExpenseContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import AddExpenseModal from '../components/AddExpenseModal';
+import AddTripmateModal from '../components/AddTripmateModal';
 import ExpenseItem from '../components/ExpenseItem';
 import SettingsMenu from '../components/SettingsMenu';
 
@@ -37,7 +41,7 @@ const SORT_OPTIONS = [
 ];
 
 // Inner component that uses the ExpenseContext
-function TripDetailsContent() {
+function TripDetailsContent({ tripmates, isCreator }) {
     const { expenses, loading, sortMethod, changeSortMethod } = useExpense();
     const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState(null);
@@ -108,6 +112,9 @@ function TripDetailsContent() {
     const handleSortChange = (e) => {
         changeSortMethod(e.target.value);
     };
+
+    // Get all email addresses from tripmates for paid by options
+    const paidByOptions = tripmates.map(tripmate => tripmate.email);
 
     return (
         <>
@@ -188,7 +195,7 @@ function TripDetailsContent() {
             <AddExpenseModal 
                 open={addExpenseModalOpen} 
                 onClose={handleCloseAddExpenseModal} 
-                paidByOptions={[currentUser?.email]} // Will be expanded in later phases
+                paidByOptions={paidByOptions}
                 expense={selectedExpense}
             />
         </>
@@ -200,9 +207,12 @@ export default function TripDetails() {
     const { tripId } = useParams();
     const navigate = useNavigate();
     const [trip, setTrip] = useState(null);
+    const [tripmates, setTripmates] = useState([]);
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
+    const [addTripmateModalOpen, setAddTripmateModalOpen] = useState(false);
     const { currentUser } = useAuth();
+    const { getTripDetails } = useTrip();
 
     useEffect(() => {
         async function fetchTripDetails() {
@@ -213,40 +223,43 @@ export default function TripDetails() {
             }
 
             try {
-                const tripDoc = await getDoc(doc(db, 'trips', tripId));
+                const tripDetails = await getTripDetails(tripId);
                 
-                if (!tripDoc.exists()) {
+                if (!tripDetails) {
                     setError('Trip not found');
                     setLoading(false);
                     return;
                 }
                 
-                const tripData = {
-                    id: tripDoc.id,
-                    ...tripDoc.data()
-                };
-                
-                // Check if user is allowed to access this trip
-                if (tripData.creatorId !== currentUser.uid) {
-                    setError('You do not have permission to view this trip');
-                    setLoading(false);
-                    return;
-                }
-                
-                setTrip(tripData);
+                setTrip(tripDetails);
+                setTripmates(tripDetails.tripmates || []);
                 setLoading(false);
             } catch (err) {
                 console.error('Error fetching trip details:', err);
-                setError('Error loading trip details');
+                
+                if (err.message === 'Not authorized to view this trip') {
+                    setError('You do not have permission to view this trip');
+                } else {
+                    setError('Error loading trip details');
+                }
+                
                 setLoading(false);
             }
         }
         
         fetchTripDetails();
-    }, [tripId, currentUser]);
+    }, [tripId, currentUser, getTripDetails]);
 
     const handleBackToTrips = () => {
         navigate('/trips');
+    };
+    
+    const handleOpenAddTripmateModal = () => {
+        setAddTripmateModalOpen(true);
+    };
+    
+    const handleCloseAddTripmateModal = () => {
+        setAddTripmateModalOpen(false);
     };
 
     if (loading) {
@@ -291,9 +304,51 @@ export default function TripDetails() {
             </AppBar>
             
             <Container sx={{ mt: 4 }}>
+                {/* Tripmates Section */}
+                {tripmates.length > 1 && (
+                    <Box sx={{ mb: 4 }}>
+                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center' }}>
+                            <PeopleIcon fontSize="small" sx={{ mr: 1 }} />
+                            Trip members: 
+                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, ml: 1 }}>
+                                {tripmates.map(tripmate => (
+                                    <Chip
+                                        key={tripmate.uid}
+                                        label={tripmate.email}
+                                        size="small"
+                                        variant="outlined"
+                                    />
+                                ))}
+                            </Box>
+                        </Typography>
+                    </Box>
+                )}
+                
+                {/* Add Tripmate Button - Only shown to trip creator */}
+                {trip.isCreator && (
+                    <Box sx={{ mb: 4 }}>
+                        <Button 
+                            variant="outlined" 
+                            color="primary"
+                            startIcon={<AddIcon />}
+                            onClick={handleOpenAddTripmateModal}
+                        >
+                            Add new tripmate
+                        </Button>
+                    </Box>
+                )}
+                
                 <ExpenseProvider tripId={tripId}>
-                    <TripDetailsContent />
+                    <TripDetailsContent tripmates={tripmates} isCreator={trip.isCreator} />
                 </ExpenseProvider>
+                
+                {/* Add Tripmate Modal */}
+                <AddTripmateModal 
+                    open={addTripmateModalOpen} 
+                    onClose={handleCloseAddTripmateModal}
+                    tripId={tripId}
+                    tripName={trip.name}
+                />
             </Container>
         </>
     );
