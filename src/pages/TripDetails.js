@@ -21,6 +21,7 @@ import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { ExpenseProvider, useExpense } from '../contexts/ExpenseContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 import AddExpenseModal from '../components/AddExpenseModal';
 import ExpenseItem from '../components/ExpenseItem';
 import SettingsMenu from '../components/SettingsMenu';
@@ -40,7 +41,54 @@ function TripDetailsContent() {
     const { expenses, loading, sortMethod, changeSortMethod } = useExpense();
     const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState(null);
+    const [totalAmount, setTotalAmount] = useState(0);
+    const [isCalculatingTotal, setIsCalculatingTotal] = useState(true);
     const { currentUser } = useAuth();
+    const { homeCurrency, convert, formatCurrency } = useCurrency();
+    
+    // Calculate the total in home currency whenever expenses or homeCurrency changes
+    useEffect(() => {
+        async function calculateTotal() {
+            if (expenses.length === 0) {
+                setTotalAmount(0);
+                setIsCalculatingTotal(false);
+                return;
+            }
+            
+            try {
+                setIsCalculatingTotal(true);
+                let total = 0;
+                
+                // Convert each expense to home currency and sum
+                for (const expense of expenses) {
+                    const convertedAmount = await convert(
+                        expense.amount,
+                        expense.currency,
+                        homeCurrency
+                    );
+                    total += convertedAmount;
+                }
+                
+                setTotalAmount(total);
+            } catch (error) {
+                console.error('Error calculating total:', error);
+                
+                // Fallback: just sum up without conversion
+                const fallbackTotal = expenses.reduce((sum, expense) => {
+                    if (expense.currency.toLowerCase() === homeCurrency.toLowerCase()) {
+                        return sum + expense.amount;
+                    }
+                    return sum;
+                }, 0);
+                
+                setTotalAmount(fallbackTotal);
+            } finally {
+                setIsCalculatingTotal(false);
+            }
+        }
+        
+        calculateTotal();
+    }, [expenses, homeCurrency, convert]);
     
     const handleOpenAddExpenseModal = () => {
         setSelectedExpense(null);
@@ -59,15 +107,6 @@ function TripDetailsContent() {
 
     const handleSortChange = (e) => {
         changeSortMethod(e.target.value);
-    };
-
-    // Calculate total expenses
-    const calculateTotal = () => {
-        if (expenses.length === 0) return 0;
-        
-        return expenses.reduce((total, expense) => {
-            return total + parseFloat(expense.amount);
-        }, 0);
     };
 
     return (
@@ -89,8 +128,20 @@ function TripDetailsContent() {
                 <Typography variant="h6" gutterBottom>
                     Trip Summary
                 </Typography>
-                <Typography variant="body1">
-                    Total Expenses: {expenses.length > 0 ? `${expenses[0].currency.toUpperCase()} ${calculateTotal().toFixed(2)}` : '0'}
+                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    <Typography variant="body1">
+                        Total Expenses: 
+                    </Typography>
+                    {isCalculatingTotal ? (
+                        <CircularProgress size={20} sx={{ ml: 1 }} />
+                    ) : (
+                        <Typography variant="body1" sx={{ ml: 1, fontWeight: 'bold' }}>
+                            {formatCurrency(totalAmount, homeCurrency)}
+                        </Typography>
+                    )}
+                </Box>
+                <Typography variant="caption" color="text.secondary">
+                    All amounts converted to your home currency ({homeCurrency.toUpperCase()})
                 </Typography>
             </Paper>
             
@@ -150,16 +201,17 @@ export default function TripDetails() {
     const navigate = useNavigate();
     const [trip, setTrip] = useState(null);
     const [loading, setLoading] = useState(true);
-    const [error, setError] = useState('');
+    const [error, setError] = useState(null);
     const { currentUser } = useAuth();
-    
+
     useEffect(() => {
         async function fetchTripDetails() {
-            if (!currentUser || !tripId) {
+            if (!currentUser) {
+                setError('You must be logged in to view trip details');
                 setLoading(false);
                 return;
             }
-            
+
             try {
                 const tripDoc = await getDoc(doc(db, 'trips', tripId));
                 
@@ -169,65 +221,48 @@ export default function TripDetails() {
                     return;
                 }
                 
-                const tripData = { id: tripDoc.id, ...tripDoc.data() };
+                const tripData = {
+                    id: tripDoc.id,
+                    ...tripDoc.data()
+                };
                 
-                // Check if current user is allowed to access this trip
-                if (tripData.creatorId !== currentUser.uid && !tripData.tripmates.includes(currentUser.uid)) {
+                // Check if user is allowed to access this trip
+                if (tripData.creatorId !== currentUser.uid) {
                     setError('You do not have permission to view this trip');
                     setLoading(false);
                     return;
                 }
                 
                 setTrip(tripData);
+                setLoading(false);
             } catch (err) {
                 console.error('Error fetching trip details:', err);
-                setError('Failed to load trip details');
-            } finally {
+                setError('Error loading trip details');
                 setLoading(false);
             }
         }
         
         fetchTripDetails();
     }, [tripId, currentUser]);
-    
+
     const handleBackToTrips = () => {
         navigate('/trips');
     };
-    
+
     if (loading) {
         return (
-            <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
+            <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
                 <CircularProgress />
-            </Box>
-        );
-    }
-    
-    if (error) {
-        return (
-            <Container maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="error" sx={{ mb: 2 }}>
-                    {error}
-                </Alert>
-                <Button 
-                    variant="contained" 
-                    startIcon={<ArrowBackIcon />} 
-                    onClick={handleBackToTrips}
-                >
-                    Back to Trips
-                </Button>
             </Container>
         );
     }
-    
-    if (!trip) {
+
+    if (error) {
         return (
-            <Container maxWidth="md" sx={{ mt: 4 }}>
-                <Alert severity="warning">
-                    Trip data is not available.
-                </Alert>
+            <Container sx={{ mt: 4 }}>
+                <Alert severity="error">{error}</Alert>
                 <Button 
-                    variant="contained" 
-                    startIcon={<ArrowBackIcon />} 
+                    variant="outlined" 
                     onClick={handleBackToTrips}
                     sx={{ mt: 2 }}
                 >
@@ -236,30 +271,26 @@ export default function TripDetails() {
             </Container>
         );
     }
-    
+
     return (
         <>
-            <AppBar position="static">
+            <AppBar position="static" color="primary" elevation={0}>
                 <Toolbar>
                     <IconButton 
                         edge="start" 
                         color="inherit" 
                         onClick={handleBackToTrips}
-                        sx={{ mr: 2 }}
                     >
                         <ArrowBackIcon />
                     </IconButton>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                    <Typography variant="h6" sx={{ flexGrow: 1, ml: 1 }}>
                         {trip.name}
-                    </Typography>
-                    <Typography variant="body2" sx={{ mr: 2 }}>
-                        {currentUser?.email}
                     </Typography>
                     <SettingsMenu />
                 </Toolbar>
             </AppBar>
             
-            <Container maxWidth="md" sx={{ mt: 4 }}>
+            <Container sx={{ mt: 4 }}>
                 <ExpenseProvider tripId={tripId}>
                     <TripDetailsContent />
                 </ExpenseProvider>

@@ -4,6 +4,7 @@ import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
 import { TripProvider } from './contexts/TripContext';
+import { CurrencyProvider } from './contexts/CurrencyContext';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -32,29 +33,31 @@ function App() {
       <CssBaseline />
       <Router basename={basename}>
         <AuthProvider>
-          <TripProvider>
-            <Routes>
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              <Route 
-                path="/trips" 
-                element={
-                  <PrivateRoute>
-                    <TripList />
-                  </PrivateRoute>
-                } 
-              />
-              <Route 
-                path="/trips/:tripId" 
-                element={
-                  <PrivateRoute>
-                    <TripDetails />
-                  </PrivateRoute>
-                } 
-              />
-              <Route path="/" element={<Navigate to="/login" />} />
-            </Routes>
-          </TripProvider>
+          <CurrencyProvider>
+            <TripProvider>
+              <Routes>
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                <Route 
+                  path="/trips" 
+                  element={
+                    <PrivateRoute>
+                      <TripList />
+                    </PrivateRoute>
+                  } 
+                />
+                <Route 
+                  path="/trips/:tripId" 
+                  element={
+                    <PrivateRoute>
+                      <TripDetails />
+                    </PrivateRoute>
+                  } 
+                />
+                <Route path="/" element={<Navigate to="/login" />} />
+              </Routes>
+            </TripProvider>
+          </CurrencyProvider>
         </AuthProvider>
       </Router>
     </ThemeProvider>

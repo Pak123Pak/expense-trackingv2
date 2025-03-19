@@ -18,7 +18,8 @@ import {
     IconButton,
     Grid,
     Rating,
-    Input
+    Input,
+    CircularProgress
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -26,6 +27,7 @@ import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { useExpense } from '../contexts/ExpenseContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 const EXPENSE_TYPES = [
     'Flights',
@@ -38,19 +40,16 @@ const EXPENSE_TYPES = [
     'Other'
 ];
 
-const CURRENCIES = [
-    'hkd', 'usd', 'eur', 'gbp', 'jpy', 'cny', 'aud', 'cad', 'krw'
-];
-
 export default function AddExpenseModal({ open, onClose, paidByOptions, expense }) {
     const { addExpense, updateExpense } = useExpense();
+    const { availableCurrencies, homeCurrency } = useCurrency();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
     const isEditMode = !!expense;
     
     // Form state
     const [formData, setFormData] = useState({
-        currency: 'hkd',
+        currency: homeCurrency || 'hkd',
         amount: '',
         type: '',
         description: '',
@@ -74,7 +73,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
     useEffect(() => {
         if (expense) {
             setFormData({
-                currency: expense.currency || 'hkd',
+                currency: expense.currency || homeCurrency || 'hkd',
                 amount: expense.amount?.toString() || '',
                 type: expense.type || '',
                 description: expense.description || '',
@@ -99,8 +98,11 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             if (expense.photoURL) {
                 setPhotoPreview(expense.photoURL);
             }
+        } else {
+            // For new expense, default to home currency
+            setFormData(prev => ({ ...prev, currency: homeCurrency || 'hkd' }));
         }
-    }, [expense, paidByOptions]);
+    }, [expense, paidByOptions, homeCurrency]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -152,24 +154,19 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
         }
         
         if (!formData.type) {
-            newErrors.type = 'Please select an expense type';
+            newErrors.type = 'Please select a type';
         }
         
         if (!formData.paidBy) {
             newErrors.paidBy = 'Please select who paid';
         }
         
-        if (formData.consecutiveDays && (
-            isNaN(formData.consecutiveDays) || 
-            parseInt(formData.consecutiveDays) < 1 ||
-            !Number.isInteger(parseFloat(formData.consecutiveDays))
-        )) {
-            newErrors.consecutiveDays = 'Please enter a valid number of days (integer >= 1)';
+        if (!formData.splitMethod) {
+            newErrors.splitMethod = 'Please select how to split';
         }
         
-        // Photo validation - check file size if a new photo is selected
-        if (selectedPhoto && selectedPhoto.size > 5 * 1024 * 1024) { // 5MB limit
-            newErrors.photo = 'Photo size should be less than 5MB';
+        if (formData.consecutiveDays !== '' && (isNaN(formData.consecutiveDays) || parseInt(formData.consecutiveDays) < 1)) {
+            newErrors.consecutiveDays = 'Please enter a valid number of days (minimum 1)';
         }
         
         setErrors(newErrors);
@@ -177,29 +174,24 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
     };
 
     const handleSubmit = async () => {
-        if (!validateForm()) return;
+        if (!validateForm()) {
+            return;
+        }
         
         try {
             setIsSubmitting(true);
             
-            // If description is empty, use the type as description
-            const finalDescription = formData.description || formData.type;
-            
-            // Process the photo if there's a new one
-            let photoURL = formData.photoURL;
-            if (selectedPhoto) {
-                // In a real app, you would upload the photo to storage here
-                // and get back a URL to store in the database
-                // For now, we'll just use the data URL as a placeholder
-                photoURL = photoPreview;
-            }
-            
+            // Prepare expense data from form
             const expenseData = {
                 ...formData,
-                description: finalDescription,
                 amount: parseFloat(formData.amount),
                 consecutiveDays: parseInt(formData.consecutiveDays),
-                photoURL
+                // For new expenses, use type as description if no description provided
+                description: formData.description || formData.type,
+                // Convert date to ISO string for storage
+                expenseDate: formData.expenseDate.toISOString(),
+                // Use photo preview as URL (in a real app, this would be uploaded to storage)
+                photoURL: photoPreview
             };
             
             if (isEditMode) {
@@ -208,18 +200,18 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                 await addExpense(expenseData);
             }
             
-            handleClose();
+            onClose();
         } catch (error) {
             console.error('Error saving expense:', error);
         } finally {
             setIsSubmitting(false);
         }
     };
-
+    
     const handleClose = () => {
-        // Reset form data and errors
+        // Reset form and errors
         setFormData({
-            currency: 'hkd',
+            currency: homeCurrency || 'hkd',
             amount: '',
             type: '',
             description: '',
@@ -232,248 +224,289 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             photoURL: ''
         });
         setErrors({});
-        setShowAdditionalInfo(false);
         setSelectedPhoto(null);
         setPhotoPreview('');
+        setShowAdditionalInfo(false);
+        
         onClose();
     };
 
     return (
-        <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
-            <DialogTitle>{isEditMode ? 'Edit expense' : 'Add new expense'}</DialogTitle>
+        <Dialog
+            open={open}
+            onClose={handleClose}
+            maxWidth="md"
+            fullWidth
+        >
+            <DialogTitle>
+                {isEditMode ? 'Edit Expense' : 'Add New Expense'}
+            </DialogTitle>
             
             <DialogContent>
-                <Box component="form" noValidate sx={{ mt: 1 }}>
-                    {/* Currency and Amount */}
-                    <Grid container spacing={2} sx={{ mb: 2 }}>
-                        <Grid item xs={4}>
-                            <FormControl fullWidth variant="outlined">
-                                <InputLabel>Currency</InputLabel>
-                                <Select
-                                    name="currency"
-                                    value={formData.currency}
-                                    onChange={handleChange}
-                                    label="Currency"
-                                >
-                                    {CURRENCIES.map(currency => (
-                                        <MenuItem key={currency} value={currency}>
-                                            {currency.toUpperCase()}
-                                        </MenuItem>
-                                    ))}
-                                </Select>
-                            </FormControl>
-                        </Grid>
-                        <Grid item xs={8}>
-                            <TextField
-                                fullWidth
-                                label="Amount"
-                                name="amount"
-                                type="number"
-                                variant="outlined"
-                                value={formData.amount}
-                                onChange={handleChange}
-                                error={!!errors.amount}
-                                helperText={errors.amount}
-                                InputProps={{
-                                    startAdornment: (
-                                        <InputAdornment position="start">
-                                            {formData.currency.toUpperCase()}
-                                        </InputAdornment>
-                                    )
-                                }}
-                            />
-                        </Grid>
-                    </Grid>
-
-                    {/* Expense Type */}
-                    <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
-                        <InputLabel>Expense Type</InputLabel>
+                {/* First Line: Currency and Amount */}
+                <Box sx={{ display: 'flex', mb: 2, mt: 1 }}>
+                    <FormControl 
+                        sx={{ minWidth: 150, mr: 2 }}
+                        error={!!errors.currency}
+                    >
+                        <InputLabel id="currency-label">Currency</InputLabel>
                         <Select
-                            name="type"
-                            value={formData.type}
+                            labelId="currency-label"
+                            name="currency"
+                            value={formData.currency}
                             onChange={handleChange}
-                            label="Expense Type"
-                            error={!!errors.type}
+                            label="Currency"
                         >
-                            {EXPENSE_TYPES.map(type => (
-                                <MenuItem key={type} value={type}>
-                                    {type}
-                                </MenuItem>
-                            ))}
+                            {Object.keys(availableCurrencies).length > 0 ? (
+                                Object.entries(availableCurrencies)
+                                    .sort(([codeA], [codeB]) => {
+                                        // Show home currency first
+                                        if (codeA.toLowerCase() === homeCurrency) return -1;
+                                        if (codeB.toLowerCase() === homeCurrency) return 1;
+                                        return codeA.localeCompare(codeB);
+                                    })
+                                    .map(([code, name]) => (
+                                        <MenuItem key={code} value={code.toLowerCase()}>
+                                            {code.toUpperCase()} - {name}
+                                        </MenuItem>
+                                    ))
+                            ) : (
+                                // Fallback to predefined list if API fails
+                                ['hkd', 'usd', 'eur', 'gbp', 'jpy', 'cny', 'aud', 'cad', 'krw'].map(currency => (
+                                    <MenuItem key={currency} value={currency}>
+                                        {currency.toUpperCase()}
+                                    </MenuItem>
+                                ))
+                            )}
                         </Select>
-                        {errors.type && <FormHelperText error>{errors.type}</FormHelperText>}
+                        {errors.currency && (
+                            <FormHelperText>{errors.currency}</FormHelperText>
+                        )}
                     </FormControl>
-
-                    {/* Description */}
+                    
                     <TextField
                         fullWidth
-                        label="Description (optional)"
-                        name="description"
-                        variant="outlined"
-                        value={formData.description}
+                        label="Amount"
+                        name="amount"
+                        type="number"
+                        value={formData.amount}
+                        onChange={handleChange}
+                        error={!!errors.amount}
+                        helperText={errors.amount}
+                        InputProps={{
+                            startAdornment: (
+                                <InputAdornment position="start">
+                                    {formData.currency.toUpperCase()}
+                                </InputAdornment>
+                            ),
+                        }}
+                    />
+                </Box>
+                
+                {/* Second Line: Expense Type */}
+                <FormControl 
+                    fullWidth 
+                    sx={{ mb: 2 }}
+                    error={!!errors.type}
+                >
+                    <InputLabel id="type-label">Type of Expense</InputLabel>
+                    <Select
+                        labelId="type-label"
+                        name="type"
+                        value={formData.type}
+                        onChange={handleChange}
+                        label="Type of Expense"
+                    >
+                        {EXPENSE_TYPES.map(type => (
+                            <MenuItem key={type} value={type}>
+                                {type}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                    {errors.type && (
+                        <FormHelperText>{errors.type}</FormHelperText>
+                    )}
+                </FormControl>
+                
+                {/* Third Line: Description */}
+                <TextField
+                    fullWidth
+                    label="Description (optional)"
+                    name="description"
+                    value={formData.description}
+                    onChange={handleChange}
+                    sx={{ mb: 2 }}
+                    placeholder="Defaults to type if left empty"
+                />
+                
+                {/* Fourth Line: Paid By */}
+                <FormControl 
+                    fullWidth 
+                    sx={{ mb: 2 }}
+                    error={!!errors.paidBy}
+                >
+                    <InputLabel id="paid-by-label">Paid By</InputLabel>
+                    <Select
+                        labelId="paid-by-label"
+                        name="paidBy"
+                        value={formData.paidBy}
+                        onChange={handleChange}
+                        label="Paid By"
+                    >
+                        {paidByOptions.map(option => (
+                            <MenuItem key={option} value={option}>
+                                {option}
+                            </MenuItem>
+                        ))}
+                    </Select>
+                    {errors.paidBy && (
+                        <FormHelperText>{errors.paidBy}</FormHelperText>
+                    )}
+                </FormControl>
+                
+                {/* Fifth Line: Split Method */}
+                <FormControl 
+                    fullWidth 
+                    sx={{ mb: 2 }}
+                    error={!!errors.splitMethod}
+                >
+                    <InputLabel id="split-method-label">How to Split</InputLabel>
+                    <Select
+                        labelId="split-method-label"
+                        name="splitMethod"
+                        value={formData.splitMethod}
+                        onChange={handleChange}
+                        label="How to Split"
+                    >
+                        <MenuItem value="Don't split">Don't split</MenuItem>
+                        <MenuItem value="Everyone">Everyone</MenuItem>
+                        <MenuItem value="Individuals">Individuals</MenuItem>
+                    </Select>
+                    {errors.splitMethod && (
+                        <FormHelperText>{errors.splitMethod}</FormHelperText>
+                    )}
+                </FormControl>
+                
+                {/* Sixth Line: Additional Information Toggle */}
+                <Box 
+                    sx={{ 
+                        display: 'flex', 
+                        alignItems: 'center', 
+                        cursor: 'pointer',
+                        mb: 2
+                    }}
+                    onClick={toggleAdditionalInfo}
+                >
+                    <Typography color="primary">
+                        Additional information
+                    </Typography>
+                    <IconButton size="small">
+                        {showAdditionalInfo ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                    </IconButton>
+                </Box>
+                
+                {/* Additional Information Content */}
+                <Collapse in={showAdditionalInfo}>
+                    {/* Rating */}
+                    <Box sx={{ mb: 2 }}>
+                        <Typography component="legend">Rate this expense (optional)</Typography>
+                        <Rating
+                            name="rating"
+                            value={formData.rating}
+                            onChange={handleRatingChange}
+                        />
+                    </Box>
+                    
+                    {/* Consecutive Days */}
+                    <TextField
+                        fullWidth
+                        label="Consecutive Days"
+                        name="consecutiveDays"
+                        type="number"
+                        value={formData.consecutiveDays}
                         onChange={handleChange}
                         sx={{ mb: 2 }}
+                        error={!!errors.consecutiveDays}
+                        helperText={errors.consecutiveDays || "Number of consecutive days for this expense"}
+                        InputProps={{ inputProps: { min: 1 } }}
                     />
-
-                    {/* Paid By */}
-                    <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
-                        <InputLabel>Paid By</InputLabel>
-                        <Select
-                            name="paidBy"
-                            value={formData.paidBy}
-                            onChange={handleChange}
-                            label="Paid By"
-                            error={!!errors.paidBy}
-                        >
-                            {paidByOptions && paidByOptions.map(option => (
-                                <MenuItem key={option} value={option}>
-                                    {option}
-                                </MenuItem>
-                            ))}
-                        </Select>
-                        {errors.paidBy && <FormHelperText error>{errors.paidBy}</FormHelperText>}
-                    </FormControl>
-
-                    {/* Split Method */}
-                    <FormControl fullWidth variant="outlined" sx={{ mb: 2 }}>
-                        <InputLabel>Split Method</InputLabel>
-                        <Select
-                            name="splitMethod"
-                            value={formData.splitMethod}
-                            onChange={handleChange}
-                            label="Split Method"
-                        >
-                            <MenuItem value="Don't split">Don't split</MenuItem>
-                            <MenuItem value="Everyone">Everyone</MenuItem>
-                            <MenuItem value="Individuals">Individuals</MenuItem>
-                        </Select>
-                    </FormControl>
-
-                    {/* Additional Information Toggle */}
-                    <Box 
-                        sx={{ 
-                            display: 'flex', 
-                            alignItems: 'center', 
-                            cursor: 'pointer',
-                            mb: 1
-                        }}
-                        onClick={toggleAdditionalInfo}
-                    >
-                        <Typography variant="subtitle1">
-                            Additional information
+                    
+                    {/* Personal Summary */}
+                    <TextField
+                        fullWidth
+                        label="Personal Summary (optional)"
+                        name="personalSummary"
+                        value={formData.personalSummary}
+                        onChange={handleChange}
+                        multiline
+                        rows={3}
+                        sx={{ mb: 2 }}
+                    />
+                    
+                    {/* Photo Upload */}
+                    <Box sx={{ mb: 2 }}>
+                        <Typography gutterBottom>
+                            Upload a photo (optional)
                         </Typography>
-                        <IconButton size="small">
-                            {showAdditionalInfo ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        </IconButton>
+                        
+                        <Button
+                            variant="outlined"
+                            component="label"
+                            startIcon={<PhotoCamera />}
+                        >
+                            Upload
+                            <input
+                                hidden
+                                accept="image/*"
+                                type="file"
+                                onChange={handlePhotoChange}
+                            />
+                        </Button>
+                        
+                        {photoPreview && (
+                            <Box sx={{ mt: 2, textAlign: 'center' }}>
+                                <img 
+                                    src={photoPreview} 
+                                    alt="Preview" 
+                                    style={{ 
+                                        maxWidth: '100%', 
+                                        maxHeight: '200px',
+                                        borderRadius: '4px'
+                                    }} 
+                                />
+                            </Box>
+                        )}
                     </Box>
-
-                    {/* Additional Information Content */}
-                    <Collapse in={showAdditionalInfo}>
-                        <Box sx={{ pl: 2, pr: 2 }}>
-                            {/* Rating */}
-                            <Box sx={{ mb: 2 }}>
-                                <Typography component="legend">Rating</Typography>
-                                <Rating
-                                    name="rating"
-                                    value={formData.rating}
-                                    onChange={handleRatingChange}
-                                />
-                            </Box>
-
-                            {/* Consecutive Days */}
-                            <TextField
-                                fullWidth
-                                label="Consecutive Days"
-                                name="consecutiveDays"
-                                type="number"
-                                variant="outlined"
-                                value={formData.consecutiveDays}
-                                onChange={handleChange}
-                                sx={{ mb: 2 }}
-                                error={!!errors.consecutiveDays}
-                                helperText={errors.consecutiveDays || "Enter the number of consecutive days for this expense"}
-                                InputProps={{ inputProps: { min: 1 } }}
+                    
+                    {/* Expense Date */}
+                    <Box sx={{ mb: 2 }}>
+                        <LocalizationProvider dateAdapter={AdapterDateFns}>
+                            <DatePicker
+                                label="Expense Date"
+                                value={formData.expenseDate}
+                                onChange={handleDateChange}
+                                renderInput={(params) => <TextField {...params} fullWidth />}
                             />
-
-                            {/* Personal Summary */}
-                            <TextField
-                                fullWidth
-                                label="Personal Summary"
-                                name="personalSummary"
-                                variant="outlined"
-                                value={formData.personalSummary}
-                                onChange={handleChange}
-                                sx={{ mb: 2 }}
-                                multiline
-                                rows={2}
-                            />
-
-                            {/* Photo Upload */}
-                            <Box sx={{ mb: 2 }}>
-                                <Typography variant="body2" gutterBottom>
-                                    Upload a photo
-                                </Typography>
-                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                                    <Button
-                                        variant="contained"
-                                        component="label"
-                                        startIcon={<PhotoCamera />}
-                                        color="secondary"
-                                    >
-                                        Choose File
-                                        <Input
-                                            type="file"
-                                            sx={{ display: 'none' }}
-                                            inputProps={{ accept: 'image/*' }}
-                                            onChange={handlePhotoChange}
-                                        />
-                                    </Button>
-                                    {errors.photo && (
-                                        <FormHelperText error>{errors.photo}</FormHelperText>
-                                    )}
-                                </Box>
-                                {photoPreview && (
-                                    <Box sx={{ mt: 2, textAlign: 'center' }}>
-                                        <img 
-                                            src={photoPreview} 
-                                            alt="Expense" 
-                                            style={{ 
-                                                maxWidth: '100%', 
-                                                maxHeight: '200px',
-                                                borderRadius: '4px'
-                                            }} 
-                                        />
-                                    </Box>
-                                )}
-                            </Box>
-
-                            {/* Expense Date */}
-                            <LocalizationProvider dateAdapter={AdapterDateFns}>
-                                <DatePicker
-                                    label="Expense Date"
-                                    value={formData.expenseDate}
-                                    onChange={handleDateChange}
-                                    renderInput={(params) => (
-                                        <TextField {...params} fullWidth variant="outlined" />
-                                    )}
-                                />
-                            </LocalizationProvider>
-                        </Box>
-                    </Collapse>
-                </Box>
+                        </LocalizationProvider>
+                    </Box>
+                </Collapse>
             </DialogContent>
             
             <DialogActions>
-                <Button onClick={handleClose} color="primary">
+                <Button onClick={handleClose} disabled={isSubmitting}>
                     Cancel
                 </Button>
                 <Button 
                     onClick={handleSubmit} 
-                    color="primary" 
-                    variant="contained"
+                    variant="contained" 
+                    color="primary"
                     disabled={isSubmitting}
                 >
-                    {isSubmitting ? 'Saving...' : 'Save'}
+                    {isSubmitting ? (
+                        <CircularProgress size={24} />
+                    ) : (
+                        isEditMode ? 'Update' : 'Save'
+                    )}
                 </Button>
             </DialogActions>
         </Dialog>

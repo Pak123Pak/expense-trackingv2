@@ -49,6 +49,16 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - Enhanced expense sorting options
 - Full CRUD operations for expenses
 
+## Phase 5: Currency Conversion
+
+- Home currency settings in user profile
+- Currency conversion using exchange rate API
+- Display of converted currency amounts
+- Summary box showing total expenses in home currency
+- Improved expense display with original and converted amounts
+- Currency selection in expense forms
+- User settings panel for changing home currency
+
 ## Technologies Used
 
 - React
@@ -57,6 +67,7 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - React Router
 - Chart.js
 - Date-fns
+- Exchange Rate API
 
 ## Getting Started
 
@@ -121,6 +132,10 @@ npm run deploy
   - `AuthContext.js`: User authentication state
   - `TripContext.js`: Trip list state management
   - `ExpenseContext.js`: Expense list state management
+  - `CurrencyContext.js`: Currency conversion and user preferences
+
+- `src/services`: Service modules for external API interactions
+  - `currencyService.js`: Functions for currency conversion and formatting
 
 - `src/pages`: Main application pages
   - `Login.js`: User login page

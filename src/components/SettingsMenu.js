@@ -1,19 +1,39 @@
-import React, { useState, useRef } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { 
     Menu, 
     MenuItem, 
     IconButton, 
     Typography,
-    Divider
+    Divider,
+    Button,
+    Dialog,
+    DialogTitle,
+    DialogContent,
+    DialogActions,
+    FormControl,
+    InputLabel,
+    Select,
+    CircularProgress
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import { useAuth } from '../contexts/AuthContext';
+import { useCurrency } from '../contexts/CurrencyContext';
 
 // This is a basic settings menu that will be expanded in future phases
 export default function SettingsMenu() {
     const [anchorEl, setAnchorEl] = useState(null);
+    const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+    const [selectedCurrency, setSelectedCurrency] = useState('');
+    const [saving, setSaving] = useState(false);
+    
     const { logout } = useAuth();
+    const { homeCurrency, availableCurrencies, updateHomeCurrency } = useCurrency();
     const menuButtonRef = useRef(null);
+    
+    // Set selected currency when home currency changes
+    useEffect(() => {
+        setSelectedCurrency(homeCurrency);
+    }, [homeCurrency]);
 
     const handleOpenSettings = (event) => {
         setAnchorEl(event.currentTarget);
@@ -30,6 +50,37 @@ export default function SettingsMenu() {
             console.error('Error logging out:', error);
         }
         handleCloseSettings();
+    };
+    
+    const handleOpenCurrencyDialog = () => {
+        setCurrencyDialogOpen(true);
+        handleCloseSettings();
+    };
+    
+    const handleCloseCurrencyDialog = () => {
+        setCurrencyDialogOpen(false);
+        setSelectedCurrency(homeCurrency);
+    };
+    
+    const handleCurrencyChange = (event) => {
+        setSelectedCurrency(event.target.value);
+    };
+    
+    const handleSaveCurrency = async () => {
+        if (selectedCurrency === homeCurrency) {
+            handleCloseCurrencyDialog();
+            return;
+        }
+        
+        setSaving(true);
+        try {
+            await updateHomeCurrency(selectedCurrency);
+            handleCloseCurrencyDialog();
+        } catch (error) {
+            console.error('Error updating home currency:', error);
+        } finally {
+            setSaving(false);
+        }
     };
 
     return (
@@ -53,8 +104,50 @@ export default function SettingsMenu() {
                     </Typography>
                 </MenuItem>
                 <Divider />
+                <MenuItem onClick={handleOpenCurrencyDialog}>
+                    Change Home Currency
+                </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
+            
+            {/* Currency Settings Dialog */}
+            <Dialog open={currencyDialogOpen} onClose={handleCloseCurrencyDialog}>
+                <DialogTitle>Change Home Currency</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" paragraph>
+                        Select your home currency. All expenses will be converted to this currency for summary and reporting.
+                    </Typography>
+                    
+                    <FormControl fullWidth margin="normal">
+                        <InputLabel>Home Currency</InputLabel>
+                        <Select
+                            value={selectedCurrency}
+                            onChange={handleCurrencyChange}
+                            label="Home Currency"
+                            disabled={saving}
+                        >
+                            {Object.entries(availableCurrencies).map(([code, name]) => (
+                                <MenuItem key={code} value={code.toLowerCase()}>
+                                    {code.toUpperCase()} - {name}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseCurrencyDialog} disabled={saving}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleSaveCurrency} 
+                        variant="contained" 
+                        color="primary"
+                        disabled={saving}
+                    >
+                        {saving ? <CircularProgress size={24} /> : 'Save'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
         </>
     );
 } 
