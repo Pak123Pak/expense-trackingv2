@@ -1,0 +1,42 @@
+// Firebase Firestore Security Rules for Expense Tracker Application
+// Copy these rules to the Firebase Console > Firestore Database > Rules
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    // User profile rules
+    match /users/{userId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Trip rules
+    match /trips/{tripId} {
+      allow create: if request.auth != null;
+      allow read, update, delete: if request.auth != null && (
+        resource.data.creatorId == request.auth.uid || 
+        request.auth.uid in resource.data.tripmates
+      );
+    }
+    
+    // Rules for expenses within trips (for future implementation)
+    match /trips/{tripId}/expenses/{expenseId} {
+      allow read, write: if request.auth != null && exists(/databases/$(database)/documents/trips/$(tripId)) && (
+        get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid || 
+        request.auth.uid in get(/databases/$(database)/documents/trips/$(tripId)).data.tripmates
+      );
+    }
+    
+    // Rules for user notifications (for future implementation)
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Rules for debts within trips (for future implementation)
+    match /trips/{tripId}/debts/{debtId} {
+      allow read, write: if request.auth != null && exists(/databases/$(database)/documents/trips/$(tripId)) && (
+        get(/databases/$(database)/documents/trips/$(tripId)).data.creatorId == request.auth.uid || 
+        request.auth.uid in get(/databases/$(database)/documents/trips/$(tripId)).data.tripmates
+      );
+    }
+  }
+} 
