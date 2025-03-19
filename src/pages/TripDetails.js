@@ -23,6 +23,7 @@ import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PeopleIcon from '@mui/icons-material/People';
 import MoneyIcon from '@mui/icons-material/Money';
+import AnalyticsIcon from '@mui/icons-material/Analytics';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../contexts/TripContext';
@@ -56,6 +57,8 @@ function TripDetailsContent({ tripmates, isCreator }) {
     const [isCalculatingTotal, setIsCalculatingTotal] = useState(true);
     const { currentUser } = useAuth();
     const { homeCurrency, convert, formatCurrency } = useCurrency();
+    const navigate = useNavigate();
+    const { tripId } = useParams();
     
     // Calculate the total in home currency whenever expenses or homeCurrency changes
     useEffect(() => {
@@ -128,13 +131,17 @@ function TripDetailsContent({ tripmates, isCreator }) {
         setCheckDebtModalOpen(false);
     };
 
+    const handleOpenClassification = () => {
+        navigate(`/trips/${tripId}/classification`);
+    };
+
     // Get all email addresses from tripmates for paid by options
     const paidByOptions = tripmates.map(tripmate => tripmate.email);
 
     return (
         <>
             {/* Action Buttons */}
-            <Box sx={{ mb: 4, display: 'flex', gap: 2 }}>
+            <Box sx={{ mb: 4, display: 'flex', gap: 2, flexWrap: 'wrap' }}>
                 <Button 
                     variant="contained" 
                     color="primary"
@@ -151,6 +158,15 @@ function TripDetailsContent({ tripmates, isCreator }) {
                     onClick={handleOpenCheckDebtModal}
                 >
                     Check debt
+                </Button>
+                
+                <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<AnalyticsIcon />}
+                    onClick={handleOpenClassification}
+                >
+                    Classify expense
                 </Button>
             </Box>
             

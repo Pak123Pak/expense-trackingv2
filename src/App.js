@@ -12,6 +12,7 @@ import Register from './pages/Register';
 import TripList from './pages/TripList';
 import TripDetails from './pages/TripDetails';
 import Notifications from './pages/Notifications';
+import ExpenseClassification from './pages/ExpenseClassification';
 import './App.css';
 
 // Create a theme
@@ -54,6 +55,14 @@ function App() {
                     element={
                       <PrivateRoute>
                         <TripDetails />
+                      </PrivateRoute>
+                    } 
+                  />
+                  <Route 
+                    path="/trips/:tripId/classification" 
+                    element={
+                      <PrivateRoute>
+                        <ExpenseClassification />
                       </PrivateRoute>
                     } 
                   />

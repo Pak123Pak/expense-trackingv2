@@ -61,6 +61,13 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - Settle up debts with a single click
 - View debt history for settled expenses
 
+### Phase 8: Data Visualization
+- Visualize expenses by category type
+- View day-by-day expense breakdown
+- Filter visualizations by specific trip mates
+- Automatically distribute multi-day expenses across dates
+- Convert all amounts to home currency for consistent comparison
+
 ## Upcoming Features
 - Data visualization for expense types and day-by-day spending
 - Responsive design improvements
