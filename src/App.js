@@ -3,6 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
+import { TripProvider } from './contexts/TripContext';
 import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
@@ -30,19 +31,21 @@ function App() {
       <CssBaseline />
       <Router basename={basename}>
         <AuthProvider>
-          <Routes>
-            <Route path="/login" element={<Login />} />
-            <Route path="/register" element={<Register />} />
-            <Route 
-              path="/trips" 
-              element={
-                <PrivateRoute>
-                  <TripList />
-                </PrivateRoute>
-              } 
-            />
-            <Route path="/" element={<Navigate to="/login" />} />
-          </Routes>
+          <TripProvider>
+            <Routes>
+              <Route path="/login" element={<Login />} />
+              <Route path="/register" element={<Register />} />
+              <Route 
+                path="/trips" 
+                element={
+                  <PrivateRoute>
+                    <TripList />
+                  </PrivateRoute>
+                } 
+              />
+              <Route path="/" element={<Navigate to="/login" />} />
+            </Routes>
+          </TripProvider>
         </AuthProvider>
       </Router>
     </ThemeProvider>

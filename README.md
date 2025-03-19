@@ -20,6 +20,14 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - User authentication (login and registration)
 - Basic routing
 
+## Phase 2: Trip Management
+
+- Trip List page with UI for viewing all trips
+- Add New Trip functionality with modal form
+- Delete Trip functionality with confirmation dialog
+- Trip storage in Firestore database
+- Settings menu setup
+
 ## Technologies Used
 
 - React
