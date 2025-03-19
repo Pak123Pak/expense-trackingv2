@@ -1,14 +1,15 @@
 import React, { useState } from 'react';
 import { 
-    Container, 
-    Typography, 
-    Button, 
     Box, 
-    AppBar, 
-    Toolbar, 
-    CircularProgress,
+    Button, 
+    Typography, 
     Alert,
-    Paper
+    Paper,
+    Divider,
+    useTheme,
+    useMediaQuery,
+    Grid,
+    Fade
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import { useTrip } from '../contexts/TripContext';
@@ -16,13 +17,17 @@ import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import TripItem from '../components/TripItem';
 import AddTripModal from '../components/AddTripModal';
-import SettingsMenu from '../components/SettingsMenu';
+import PageContainer from '../components/PageContainer';
+import LoadingWrapper from '../components/LoadingWrapper';
+import ErrorDisplay from '../components/ErrorDisplay';
 
 export default function TripList() {
     const [addTripModalOpen, setAddTripModalOpen] = useState(false);
-    const { trips, loading } = useTrip();
+    const { trips, loading, error, fetchTrips } = useTrip();
     const { currentUser } = useAuth();
     const { homeCurrency } = useCurrency();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
     
     const handleOpenAddTripModal = () => {
         setAddTripModalOpen(true);
@@ -33,64 +38,82 @@ export default function TripList() {
     };
 
     return (
-        <>
-            <AppBar position="static" color="primary" elevation={0}>
-                <Toolbar>
-                    <Typography variant="h6" sx={{ flexGrow: 1 }}>
-                        My Trips
-                    </Typography>
-                    <SettingsMenu />
-                </Toolbar>
-            </AppBar>
+        <PageContainer title="My Trips">
+            <Box sx={{ mb: 4 }}>
+                <Button 
+                    variant="contained" 
+                    color="primary"
+                    startIcon={<AddIcon />}
+                    onClick={handleOpenAddTripModal}
+                    sx={{ py: 1.5, px: 3 }}
+                    fullWidth={isMobile}
+                >
+                    Add new trip
+                </Button>
+            </Box>
             
-            <Container sx={{ mt: 4 }}>
-                <Box sx={{ mb: 4 }}>
-                    <Button 
-                        variant="contained" 
-                        color="primary"
-                        startIcon={<AddIcon />}
-                        onClick={handleOpenAddTripModal}
-                    >
-                        Add new trip
-                    </Button>
-                </Box>
-                
-                <Paper elevation={3} sx={{ p: 3, mb: 4 }}>
-                    <Typography variant="h6" gutterBottom>
-                        Account Settings
-                    </Typography>
-                    <Typography variant="body1">
-                        User: {currentUser?.email}
-                    </Typography>
-                    <Typography variant="body1">
-                        Home Currency: {homeCurrency.toUpperCase()}
-                    </Typography>
-                    <Typography variant="caption" color="text.secondary">
-                        You can change your home currency in the settings menu (top right).
-                    </Typography>
-                </Paper>
-                
-                {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                        <CircularProgress />
-                    </Box>
-                ) : trips.length > 0 ? (
-                    <Box>
-                        {trips.map((trip) => (
-                            <TripItem key={trip.id} trip={trip} />
-                        ))}
-                    </Box>
+            <Paper 
+                elevation={2} 
+                sx={{ 
+                    p: { xs: 2, sm: 3 }, 
+                    mb: 4,
+                    borderRadius: 2
+                }}
+            >
+                <Typography variant="h6" gutterBottom>
+                    Account Settings
+                </Typography>
+                <Divider sx={{ mb: 2 }} />
+                <Grid container spacing={2}>
+                    <Grid item xs={12} sm={6}>
+                        <Typography variant="body1" component="div" sx={{ mb: 1 }}>
+                            <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>User:</Box>
+                            {currentUser?.email}
+                        </Typography>
+                    </Grid>
+                    <Grid item xs={12} sm={6}>
+                        <Typography variant="body1" component="div">
+                            <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>Home Currency:</Box>
+                            {homeCurrency.toUpperCase()}
+                        </Typography>
+                    </Grid>
+                </Grid>
+                <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
+                    You can change your home currency in the settings menu (top right).
+                </Typography>
+            </Paper>
+            
+            <Typography variant="h6" gutterBottom sx={{ mt: 4, mb: 2 }}>
+                My Trips
+            </Typography>
+            
+            {error && (
+                <ErrorDisplay 
+                    message={error} 
+                    onRetry={fetchTrips}
+                />
+            )}
+            
+            <LoadingWrapper loading={loading}>
+                {trips.length > 0 ? (
+                    <Fade in={!loading}>
+                        <Box>
+                            {trips.map((trip) => (
+                                <TripItem key={trip.id} trip={trip} />
+                            ))}
+                        </Box>
+                    </Fade>
                 ) : (
                     <Alert severity="info" sx={{ mt: 2 }}>
                         You don't have any trips yet. Create your first trip using the "+ Add new trip" button.
                     </Alert>
                 )}
-            </Container>
+            </LoadingWrapper>
             
             <AddTripModal 
                 open={addTripModalOpen} 
                 onClose={handleCloseAddTripModal} 
             />
-        </>
+        </PageContainer>
     );
 } 

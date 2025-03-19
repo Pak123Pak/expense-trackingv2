@@ -1,232 +1,169 @@
-# Expense Tracker
+# Expense Tracker Application
 
-A web application for tracking expenses during trips, with features for trip management, expense splitting, debt tracking, and expense visualization.
+An expense tracking application that allows users to create trips, add expenses, split costs with trip mates, and visualize spending patterns.
 
-## Project Overview
+## Live Demo
 
-This project allows users to:
-- Create and manage trips
-- Track expenses with detailed information
-- Split expenses with trip mates
-- Track debts and settlements
-- Visualize spending patterns
-
-The application is built with React and Firebase, and is deployed on GitHub Pages.
+Visit the application at: [https://Pak123Pak.github.io/expense-trackingv2/](https://Pak123Pak.github.io/expense-trackingv2/)
 
 ## Features
 
-### Phase 1: Authentication and Setup
-- User registration with email and password
-- User login with email and password
-- Protected routes for authenticated users
-
-### Phase 2: Trip Management
-- Create new trips with a name
-- View a list of your trips
-- Delete trips (only by the creator)
-- Settings menu with logout functionality
-
-### Phase 3: Basic Expense Management
-- Add expenses with basic details (amount, type, description, etc.)
-- View expenses in a trip
-- Delete expenses
-- Sort expenses by different criteria (modified time, expense time, amount)
-
-### Phase 4: Advanced Expense Features
-- Add ratings to expenses
-- Specify the number of consecutive days for an expense
-- Add personal summaries/notes to expenses
-- Upload and display photos for expenses
-- Edit existing expenses
-
-### Phase 5: Currency Management
-- Set your home currency
-- Create expenses in any currency
-- Automatic currency conversion
-- Properly formatted currency display
-
-### Phase 6: Trip Sharing
-- Add tripmates to your trips
-- Send and respond to trip invitations
-- View shared trips
-- Collaborate on trip expenses with tripmates
-
-### Phase 7: Expense Splitting and Debt Tracking
-- Split expenses using different methods:
-  - Don't split (personal expense)
-  - Everyone (split evenly among all tripmates)
-  - Individuals (select specific people to split with)
-- Track who owes what amount to whom
-- View debt summary showing your balance with each tripmate
-- Settle up debts with a single click
-- View debt history for settled expenses
-
-### Phase 8: Data Visualization
-- Visualize expenses by category type
-- View day-by-day expense breakdown
-- Filter visualizations by specific trip mates
-- Automatically distribute multi-day expenses across dates
-- Convert all amounts to home currency for consistent comparison
-
-## Upcoming Features
-- Data visualization for expense types and day-by-day spending
-- Responsive design improvements
-- More advanced expense filtering
-- Trip templates and duplication
+- **User Authentication**: Register and login with email and password
+- **Trip Management**: Create, view, and delete trips
+- **Expense Tracking**: Add, edit, and delete expenses with various details
+- **Currency Conversion**: Support for multiple currencies with automatic conversion
+- **Trip Sharing**: Invite other users to collaborate on trips
+- **Expense Splitting**: Split expenses among trip mates with various methods
+- **Debt Tracking**: Calculate and settle debts between trip mates
+- **Data Visualization**: View expenses by type or day-by-day breakdown
+- **Responsive Design**: Works on mobile, tablet, and desktop devices
 
 ## Technologies Used
 
-- React
-- Firebase (Authentication, Firestore, Storage)
-- Material UI
-- React Router
-- Chart.js
-- Date-fns
-- Exchange Rate API
+- **Frontend**: React.js, Material UI
+- **Backend**: Firebase (Authentication, Firestore, Storage)
+- **Deployment**: GitHub Pages
+- **Other Libraries**: 
+  - react-router-dom for routing
+  - chart.js for data visualization
+  - date-fns for date handling
+  - axios for HTTP requests
 
-## Getting Started
+## Project Setup
 
 ### Prerequisites
 
-- Node.js and npm
+- Node.js and npm installed
 - Firebase account
 
 ### Installation
 
 1. Clone the repository:
-```
+
+```bash
 git clone https://github.com/Pak123Pak/expense-trackingv2.git
 cd expense-trackingv2
 ```
 
 2. Install dependencies:
-```
+
+```bash
 npm install
 ```
 
 3. Create a `.env` file in the root directory with your Firebase configuration:
+
 ```
-REACT_APP_FIREBASE_API_KEY=your-api-key
-REACT_APP_FIREBASE_AUTH_DOMAIN=your-auth-domain
-REACT_APP_FIREBASE_PROJECT_ID=your-project-id
-REACT_APP_FIREBASE_STORAGE_BUCKET=your-storage-bucket
-REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your-messaging-sender-id
-REACT_APP_FIREBASE_APP_ID=your-app-id
-REACT_APP_FIREBASE_MEASUREMENT_ID=your-measurement-id
+REACT_APP_FIREBASE_API_KEY=your_api_key
+REACT_APP_FIREBASE_AUTH_DOMAIN=your_auth_domain
+REACT_APP_FIREBASE_PROJECT_ID=your_project_id
+REACT_APP_FIREBASE_STORAGE_BUCKET=your_storage_bucket
+REACT_APP_FIREBASE_MESSAGING_SENDER_ID=your_messaging_sender_id
+REACT_APP_FIREBASE_APP_ID=your_app_id
+REACT_APP_FIREBASE_MEASUREMENT_ID=your_measurement_id
 ```
 
 4. Start the development server:
-```
+
+```bash
 npm start
 ```
 
-## Deployment to GitHub Pages
+## Deployment
 
-1. Make sure you have the homepage field in your package.json:
+To deploy the application to GitHub Pages:
+
+1. Ensure your package.json has the correct homepage URL:
+
 ```json
 "homepage": "https://Pak123Pak.github.io/expense-trackingv2"
 ```
 
-2. Build and deploy the application:
-```
+2. Build and deploy:
+
+```bash
 npm run build
 npm run deploy
 ```
 
 ## Project Structure
 
-- `src/components`: Reusable UI components
-  - `AddTripModal.js`: Modal for creating new trips
-  - `TripItem.js`: Component for displaying a trip in the list
-  - `SettingsMenu.js`: User settings dropdown menu
-  - `PrivateRoute.js`: Route component for authentication protection
-  - `AddExpenseModal.js`: Modal for adding or editing expenses
-  - `ExpenseItem.js`: Component for displaying an expense in the list
+```
+expense-trackingv2/
+├── public/              # Public assets
+├── src/                 # Source code
+│   ├── components/      # Reusable UI components
+│   ├── contexts/        # React contexts for state management
+│   ├── pages/           # Main page components
+│   ├── services/        # Service layers for API calls
+│   ├── App.js           # Main App component
+│   ├── firebase.js      # Firebase configuration
+│   ├── index.js         # Entry point
+│   └── theme.js         # Material UI theme customization
+├── .env                 # Environment variables
+├── package.json         # Project dependencies and scripts
+└── README.md            # Project documentation
+```
 
-- `src/contexts`: Context providers for state management
-  - `AuthContext.js`: User authentication state
-  - `TripContext.js`: Trip list state management
-  - `ExpenseContext.js`: Expense list state management
-  - `CurrencyContext.js`: Currency conversion and user preferences
+## Development Phases
 
-- `src/services`: Service modules for external API interactions
-  - `currencyService.js`: Functions for currency conversion and formatting
+### Phase 1: Project Setup and Authentication ✅
+- Set up the project structure
+- Implement Firebase configuration
+- Create login and registration functionality
+- Set up basic routing
 
-- `src/pages`: Main application pages
-  - `Login.js`: User login page
-  - `Register.js`: User registration page
-  - `TripList.js`: Page listing all trips
-  - `TripDetails.js`: Page showing trip details and expenses
+### Phase 2: Trip Management ✅
+- Create the Trip List page
+- Implement Add New Trip functionality
+- Implement Delete Trip functionality
+- Set up trip storage in Firestore
 
-- `src/firebase.js`: Firebase configuration and service initialization
+### Phase 3: Basic Expense Management ✅
+- Create the Trip Details page
+- Implement Add New Expense functionality with basic fields
+- Implement the expense list view
+- Implement Delete Expense functionality
 
-# Getting Started with Create React App
+### Phase 4: Advanced Expense Features ✅
+- Add the remaining expense fields (ratings, photos, consecutive days)
+- Implement the Edit Expense functionality
+- Add sorting options for expenses
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+### Phase 5: Currency Conversion ✅
+- Implement home currency settings
+- Set up currency conversion API integration
+- Update expense display to show converted amounts
 
-## Available Scripts
+### Phase 6: Trip Sharing and Collaboration ✅
+- Implement the Add Tripmate functionality
+- Create notification system for trip invitations
+- Set up sharing permissions for trips
 
-In the project directory, you can run:
+### Phase 7: Expense Splitting and Debt Tracking ✅
+- Implement expense splitting functionality
+- Create the Check Debt feature
+- Implement Settle Up functionality
+- Add Debt History
 
-### `npm start`
+### Phase 8: Data Visualization ✅
+- Implement the Expense Classification page
+- Create charts for expense types
+- Create charts for day-by-day expenses
+- Add filtering options for charts
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### Phase 9: Final Touches and Deployment ✅
+- Implement responsive design
+- Add error handling and loading states
+- Clean up UI/UX
+- Deploy to GitHub Pages
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## License
 
-### `npm test`
+This project is licensed under the MIT License.
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+## Acknowledgements
 
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- [Firebase](https://firebase.google.com/) for backend services
+- [Material UI](https://mui.com/) for UI components
+- [React](https://reactjs.org/) for the frontend library
