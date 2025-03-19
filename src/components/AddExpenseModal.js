@@ -19,7 +19,13 @@ import {
     Grid,
     Rating,
     Input,
-    CircularProgress
+    CircularProgress,
+    Checkbox,
+    FormControlLabel,
+    List,
+    ListItem,
+    ListItemText,
+    ListItemIcon
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -69,6 +75,9 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
     // Form validation errors
     const [errors, setErrors] = useState({});
 
+    // New state for individual split
+    const [individualSplits, setIndividualSplits] = useState([]);
+
     // Initialize form data when editing
     useEffect(() => {
         if (expense) {
@@ -86,6 +95,11 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                 photoURL: expense.photoURL || ''
             });
             
+            // Set individual splits if they exist
+            if (expense.splitWith && Array.isArray(expense.splitWith)) {
+                setIndividualSplits(expense.splitWith);
+            }
+            
             // Show additional info if any of those fields are filled
             if (expense.rating > 0 || 
                 expense.consecutiveDays > 1 || 
@@ -101,11 +115,18 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
         } else {
             // For new expense, default to home currency
             setFormData(prev => ({ ...prev, currency: homeCurrency || 'hkd' }));
+            setIndividualSplits([]);
         }
     }, [expense, paidByOptions, homeCurrency]);
 
     const handleChange = (e) => {
         const { name, value } = e.target;
+        
+        // Reset individual splits when split method changes
+        if (name === 'splitMethod' && value !== 'Individuals') {
+            setIndividualSplits([]);
+        }
+        
         setFormData(prev => ({ ...prev, [name]: value }));
         
         // Clear validation error when field is updated
@@ -142,6 +163,22 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
         }
     };
 
+    // Handle individual split selection
+    const handleIndividualSplitChange = (email) => {
+        setIndividualSplits(prev => {
+            if (prev.includes(email)) {
+                return prev.filter(item => item !== email);
+            } else {
+                return [...prev, email];
+            }
+        });
+        
+        // Clear validation error if there was one
+        if (errors.splitWith) {
+            setErrors(prev => ({ ...prev, splitWith: '' }));
+        }
+    };
+
     const toggleAdditionalInfo = () => {
         setShowAdditionalInfo(prev => !prev);
     };
@@ -163,6 +200,11 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
         
         if (!formData.splitMethod) {
             newErrors.splitMethod = 'Please select how to split';
+        }
+        
+        // Validate that at least one person is selected for individual split
+        if (formData.splitMethod === 'Individuals' && individualSplits.length === 0) {
+            newErrors.splitWith = 'Please select at least one person';
         }
         
         if (formData.consecutiveDays !== '' && (isNaN(formData.consecutiveDays) || parseInt(formData.consecutiveDays) < 1)) {
@@ -191,7 +233,9 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                 // Convert date to ISO string for storage
                 expenseDate: formData.expenseDate.toISOString(),
                 // Use photo preview as URL (in a real app, this would be uploaded to storage)
-                photoURL: photoPreview
+                photoURL: photoPreview,
+                // Add split information if using individual split
+                splitWith: formData.splitMethod === 'Individuals' ? individualSplits : []
             };
             
             if (isEditMode) {
@@ -227,6 +271,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
         setSelectedPhoto(null);
         setPhotoPreview('');
         setShowAdditionalInfo(false);
+        setIndividualSplits([]);
         
         onClose();
     };
@@ -386,6 +431,34 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                         <FormHelperText>{errors.splitMethod}</FormHelperText>
                     )}
                 </FormControl>
+                
+                {/* Individual Splits Selection */}
+                {formData.splitMethod === 'Individuals' && (
+                    <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" gutterBottom>
+                            Select individuals to split with:
+                        </Typography>
+                        <List dense>
+                            {paidByOptions.map((email) => (
+                                <ListItem key={email} dense>
+                                    <ListItemIcon>
+                                        <Checkbox
+                                            edge="start"
+                                            checked={individualSplits.includes(email)}
+                                            onChange={() => handleIndividualSplitChange(email)}
+                                            tabIndex={-1}
+                                            disableRipple
+                                        />
+                                    </ListItemIcon>
+                                    <ListItemText primary={email} />
+                                </ListItem>
+                            ))}
+                        </List>
+                        {errors.splitWith && (
+                            <FormHelperText error>{errors.splitWith}</FormHelperText>
+                        )}
+                    </Box>
+                )}
                 
                 {/* Sixth Line: Additional Information Toggle */}
                 <Box 

@@ -15,18 +15,23 @@ import {
     InputLabel,
     Select,
     IconButton,
-    Chip
+    Chip,
+    Grid,
+    Divider
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PeopleIcon from '@mui/icons-material/People';
+import MoneyIcon from '@mui/icons-material/Money';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../contexts/TripContext';
 import { ExpenseProvider, useExpense } from '../contexts/ExpenseContext';
+import { DebtProvider, useDebt } from '../contexts/DebtContext';
 import { useCurrency } from '../contexts/CurrencyContext';
 import AddExpenseModal from '../components/AddExpenseModal';
 import AddTripmateModal from '../components/AddTripmateModal';
+import CheckDebtModal from '../components/CheckDebtModal';
 import ExpenseItem from '../components/ExpenseItem';
 import SettingsMenu from '../components/SettingsMenu';
 
@@ -40,10 +45,12 @@ const SORT_OPTIONS = [
     { value: 'amountAsc', label: 'Amount (smallest)' }
 ];
 
-// Inner component that uses the ExpenseContext
+// Inner component that uses the ExpenseContext and DebtContext
 function TripDetailsContent({ tripmates, isCreator }) {
     const { expenses, loading, sortMethod, changeSortMethod } = useExpense();
+    const { userBalances, loading: debtLoading } = useDebt();
     const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
+    const [checkDebtModalOpen, setCheckDebtModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState(null);
     const [totalAmount, setTotalAmount] = useState(0);
     const [isCalculatingTotal, setIsCalculatingTotal] = useState(true);
@@ -113,13 +120,21 @@ function TripDetailsContent({ tripmates, isCreator }) {
         changeSortMethod(e.target.value);
     };
 
+    const handleOpenCheckDebtModal = () => {
+        setCheckDebtModalOpen(true);
+    };
+    
+    const handleCloseCheckDebtModal = () => {
+        setCheckDebtModalOpen(false);
+    };
+
     // Get all email addresses from tripmates for paid by options
     const paidByOptions = tripmates.map(tripmate => tripmate.email);
 
     return (
         <>
-            {/* Add Expense Button */}
-            <Box sx={{ mb: 4 }}>
+            {/* Action Buttons */}
+            <Box sx={{ mb: 4, display: 'flex', gap: 2 }}>
                 <Button 
                     variant="contained" 
                     color="primary"
@@ -128,6 +143,15 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 >
                     Add new expense
                 </Button>
+                
+                <Button
+                    variant="outlined"
+                    color="primary"
+                    startIcon={<MoneyIcon />}
+                    onClick={handleOpenCheckDebtModal}
+                >
+                    Check debt
+                </Button>
             </Box>
             
             {/* Summary Box */}
@@ -135,7 +159,7 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 <Typography variant="h6" gutterBottom>
                     Trip Summary
                 </Typography>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
                     <Typography variant="body1">
                         Total Expenses: 
                     </Typography>
@@ -147,6 +171,59 @@ function TripDetailsContent({ tripmates, isCreator }) {
                         </Typography>
                     )}
                 </Box>
+                
+                <Divider sx={{ my: 2 }} />
+                
+                {/* User Balances */}
+                <Typography variant="subtitle1" gutterBottom>
+                    Individual Balances:
+                </Typography>
+                
+                {debtLoading ? (
+                    <CircularProgress size={20} />
+                ) : (
+                    <Grid container spacing={2}>
+                        {Object.entries(userBalances).map(([userId, balance]) => {
+                            // Find tripmate data for this userId
+                            const tripmate = tripmates.find(tm => tm.uid === userId);
+                            if (!tripmate) return null;
+                            
+                            return (
+                                <Grid item xs={12} sm={6} md={4} key={userId}>
+                                    <Box 
+                                        sx={{ 
+                                            p: 1, 
+                                            borderRadius: 1,
+                                            bgcolor: userId === currentUser.uid ? 'action.hover' : 'transparent'
+                                        }}
+                                    >
+                                        <Typography variant="subtitle2" noWrap>
+                                            {tripmate.displayName}
+                                            {userId === currentUser.uid && " (You)"}
+                                        </Typography>
+                                        <Typography variant="body2" color="text.secondary">
+                                            Paid: {formatCurrency(balance.paid, homeCurrency)}
+                                        </Typography>
+                                        <Typography 
+                                            variant="body2" 
+                                            sx={{ 
+                                                fontWeight: 'medium',
+                                                color: balance.balance > 0 
+                                                    ? 'success.main' 
+                                                    : balance.balance < 0 
+                                                        ? 'error.main' 
+                                                        : 'text.secondary'
+                                            }}
+                                        >
+                                            Balance: {formatCurrency(balance.balance, homeCurrency)}
+                                        </Typography>
+                                    </Box>
+                                </Grid>
+                            );
+                        })}
+                    </Grid>
+                )}
+                
                 <Typography variant="caption" color="text.secondary">
                     All amounts converted to your home currency ({homeCurrency.toUpperCase()})
                 </Typography>
@@ -198,11 +275,17 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 paidByOptions={paidByOptions}
                 expense={selectedExpense}
             />
+            
+            {/* Check Debt Modal */}
+            <CheckDebtModal 
+                open={checkDebtModalOpen} 
+                onClose={handleCloseCheckDebtModal} 
+            />
         </>
     );
 }
 
-// Outer component that wraps the context provider
+// Outer component that wraps the context providers
 export default function TripDetails() {
     const { tripId } = useParams();
     const navigate = useNavigate();
@@ -248,108 +331,115 @@ export default function TripDetails() {
         }
         
         fetchTripDetails();
-    }, [tripId, currentUser, getTripDetails]);
+    }, [currentUser, tripId, getTripDetails]);
 
     const handleBackToTrips = () => {
-        navigate('/trips');
+        navigate('/');
     };
-    
+
     const handleOpenAddTripmateModal = () => {
         setAddTripmateModalOpen(true);
     };
-    
+
     const handleCloseAddTripmateModal = () => {
         setAddTripmateModalOpen(false);
     };
 
     if (loading) {
         return (
-            <Container sx={{ mt: 4, display: 'flex', justifyContent: 'center' }}>
-                <CircularProgress />
+            <Container>
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '50vh' }}>
+                    <CircularProgress />
+                </Box>
             </Container>
         );
     }
 
     if (error) {
         return (
-            <Container sx={{ mt: 4 }}>
-                <Alert severity="error">{error}</Alert>
-                <Button 
-                    variant="outlined" 
-                    onClick={handleBackToTrips}
-                    sx={{ mt: 2 }}
-                >
-                    Back to Trips
-                </Button>
+            <Container>
+                <Box sx={{ mt: 4 }}>
+                    <Alert severity="error">{error}</Alert>
+                    <Button 
+                        variant="contained" 
+                        color="primary" 
+                        onClick={handleBackToTrips}
+                        sx={{ mt: 2 }}
+                    >
+                        Back to Trip List
+                    </Button>
+                </Box>
             </Container>
         );
     }
 
     return (
         <>
-            <AppBar position="static" color="primary" elevation={0}>
+            <AppBar position="static" color="default">
                 <Toolbar>
-                    <IconButton 
-                        edge="start" 
-                        color="inherit" 
+                    <IconButton
+                        edge="start"
+                        color="inherit"
                         onClick={handleBackToTrips}
+                        aria-label="back"
                     >
                         <ArrowBackIcon />
                     </IconButton>
-                    <Typography variant="h6" sx={{ flexGrow: 1, ml: 1 }}>
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
                         {trip.name}
                     </Typography>
+                    
+                    {/* Tripmates button */}
+                    <Button 
+                        startIcon={<PeopleIcon />}
+                        onClick={handleOpenAddTripmateModal}
+                        sx={{ mr: 2 }}
+                    >
+                        Add Tripmate
+                    </Button>
+                    
                     <SettingsMenu />
                 </Toolbar>
             </AppBar>
             
             <Container sx={{ mt: 4 }}>
-                {/* Tripmates Section */}
+                {/* Display tripmates if there are any */}
                 {tripmates.length > 1 && (
-                    <Box sx={{ mb: 4 }}>
-                        <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center' }}>
-                            <PeopleIcon fontSize="small" sx={{ mr: 1 }} />
-                            Trip members: 
-                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, ml: 1 }}>
-                                {tripmates.map(tripmate => (
-                                    <Chip
-                                        key={tripmate.uid}
-                                        label={tripmate.email}
-                                        size="small"
-                                        variant="outlined"
-                                    />
-                                ))}
-                            </Box>
+                    <Box sx={{ mb: 3 }}>
+                        <Typography variant="subtitle1" gutterBottom>
+                            Trip Members:
                         </Typography>
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                            {tripmates.map(tripmate => (
+                                <Chip 
+                                    key={tripmate.uid} 
+                                    label={tripmate.displayName || tripmate.email} 
+                                    variant="outlined"
+                                    color={tripmate.uid === currentUser.uid ? "primary" : "default"}
+                                />
+                            ))}
+                        </Box>
                     </Box>
                 )}
                 
-                {/* Add Tripmate Button - Only shown to trip creator */}
-                {trip.isCreator && (
-                    <Box sx={{ mb: 4 }}>
-                        <Button 
-                            variant="outlined" 
-                            color="primary"
-                            startIcon={<AddIcon />}
-                            onClick={handleOpenAddTripmateModal}
-                        >
-                            Add new tripmate
-                        </Button>
-                    </Box>
-                )}
-                
+                {/* Context providers for expenses and debts */}
                 <ExpenseProvider tripId={tripId}>
-                    <TripDetailsContent tripmates={tripmates} isCreator={trip.isCreator} />
+                    <DebtProvider tripId={tripId}>
+                        <TripDetailsContent 
+                            tripmates={tripmates} 
+                            isCreator={trip.isCreator} 
+                        />
+                    </DebtProvider>
                 </ExpenseProvider>
-                
-                {/* Add Tripmate Modal */}
-                <AddTripmateModal 
-                    open={addTripmateModalOpen} 
-                    onClose={handleCloseAddTripmateModal}
-                    tripId={tripId}
-                    tripName={trip.name}
-                />
             </Container>
+            
+            {/* Add Tripmate Modal */}
+            <AddTripmateModal
+                open={addTripmateModalOpen}
+                onClose={handleCloseAddTripmateModal}
+                tripId={tripId}
+                tripName={trip.name}
+            />
         </>
     );
 } 

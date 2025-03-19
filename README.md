@@ -13,62 +13,59 @@ This project allows users to:
 
 The application is built with React and Firebase, and is deployed on GitHub Pages.
 
-## Phase 1: Project Setup and Authentication
+## Features
 
-- Project structure setup
-- Firebase configuration
-- User authentication (login and registration)
-- Basic routing
+### Phase 1: Authentication and Setup
+- User registration with email and password
+- User login with email and password
+- Protected routes for authenticated users
 
-## Phase 2: Trip Management
+### Phase 2: Trip Management
+- Create new trips with a name
+- View a list of your trips
+- Delete trips (only by the creator)
+- Settings menu with logout functionality
 
-- Trip List page with UI for viewing all trips
-- Add New Trip functionality with modal form
-- Delete Trip functionality with confirmation dialog
-- Trip storage in Firestore database
-- Settings menu setup
+### Phase 3: Basic Expense Management
+- Add expenses with basic details (amount, type, description, etc.)
+- View expenses in a trip
+- Delete expenses
+- Sort expenses by different criteria (modified time, expense time, amount)
 
-## Phase 3: Basic Expense Management
+### Phase 4: Advanced Expense Features
+- Add ratings to expenses
+- Specify the number of consecutive days for an expense
+- Add personal summaries/notes to expenses
+- Upload and display photos for expenses
+- Edit existing expenses
 
-- Trip Details page with navigation from Trip List
-- Add New Expense functionality with form modal
-- Basic expense field implementation
-- Expense storage in Firestore database
-- Expense list with deletion functionality
-- Expense sorting options
-- Trip summary with total expense calculation
+### Phase 5: Currency Management
+- Set your home currency
+- Create expenses in any currency
+- Automatic currency conversion
+- Properly formatted currency display
 
-## Phase 4: Advanced Expense Features
+### Phase 6: Trip Sharing
+- Add tripmates to your trips
+- Send and respond to trip invitations
+- View shared trips
+- Collaborate on trip expenses with tripmates
 
-- Edit Expense functionality
-- Additional expense fields:
-  - Star rating system (0-5 stars)
-  - Consecutive days tracking for multi-day expenses
-  - Personal notes/summary field
-  - Photo upload and display
-- Enhanced expense sorting options
-- Full CRUD operations for expenses
+### Phase 7: Expense Splitting and Debt Tracking
+- Split expenses using different methods:
+  - Don't split (personal expense)
+  - Everyone (split evenly among all tripmates)
+  - Individuals (select specific people to split with)
+- Track who owes what amount to whom
+- View debt summary showing your balance with each tripmate
+- Settle up debts with a single click
+- View debt history for settled expenses
 
-## Phase 5: Currency Conversion
-
-- Home currency settings in user profile
-- Currency conversion using exchange rate API
-- Display of converted currency amounts
-- Summary box showing total expenses in home currency
-- Improved expense display with original and converted amounts
-- Currency selection in expense forms
-- User settings panel for changing home currency
-
-## Phase 6: Trip Sharing and Collaboration
-
-- Add tripmate functionality with email invitations
-- Notification system for trip invitations
-- Notification badge and management page
-- Shared trip access control
-- UI indicators for shared trips
-- Expanded settings menu with notification access
-- Trip member display in trip details page
-- Permission-based deletion controls
+## Upcoming Features
+- Data visualization for expense types and day-by-day spending
+- Responsive design improvements
+- More advanced expense filtering
+- Trip templates and duplication
 
 ## Technologies Used
 
