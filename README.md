@@ -28,6 +28,16 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - Trip storage in Firestore database
 - Settings menu setup
 
+## Phase 3: Basic Expense Management
+
+- Trip Details page with navigation from Trip List
+- Add New Expense functionality with form modal
+- Basic expense field implementation
+- Expense storage in Firestore database
+- Expense list with deletion functionality
+- Expense sorting options
+- Trip summary with total expense calculation
+
 ## Technologies Used
 
 - React
@@ -35,6 +45,7 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - Material UI
 - React Router
 - Chart.js
+- Date-fns
 
 ## Getting Started
 
@@ -88,8 +99,24 @@ npm run deploy
 ## Project Structure
 
 - `src/components`: Reusable UI components
+  - `AddTripModal.js`: Modal for creating new trips
+  - `TripItem.js`: Component for displaying a trip in the list
+  - `SettingsMenu.js`: User settings dropdown menu
+  - `PrivateRoute.js`: Route component for authentication protection
+  - `AddExpenseModal.js`: Modal for adding or editing expenses
+  - `ExpenseItem.js`: Component for displaying an expense in the list
+
 - `src/contexts`: Context providers for state management
+  - `AuthContext.js`: User authentication state
+  - `TripContext.js`: Trip list state management
+  - `ExpenseContext.js`: Expense list state management
+
 - `src/pages`: Main application pages
+  - `Login.js`: User login page
+  - `Register.js`: User registration page
+  - `TripList.js`: Page listing all trips
+  - `TripDetails.js`: Page showing trip details and expenses
+
 - `src/firebase.js`: Firebase configuration and service initialization
 
 # Getting Started with Create React App

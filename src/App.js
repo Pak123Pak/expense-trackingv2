@@ -8,6 +8,7 @@ import PrivateRoute from './components/PrivateRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
 import TripList from './pages/TripList';
+import TripDetails from './pages/TripDetails';
 import './App.css';
 
 // Create a theme
@@ -40,6 +41,14 @@ function App() {
                 element={
                   <PrivateRoute>
                     <TripList />
+                  </PrivateRoute>
+                } 
+              />
+              <Route 
+                path="/trips/:tripId" 
+                element={
+                  <PrivateRoute>
+                    <TripDetails />
                   </PrivateRoute>
                 } 
               />

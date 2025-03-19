@@ -28,9 +28,8 @@ export default function TripItem({ trip }) {
         : new Date(trip.createdAt?.seconds * 1000).toLocaleDateString();
 
     const handleOpenTrip = () => {
-        // This will be implemented in Phase 3 when we create the Trip Details page
-        console.log(`Opening trip: ${trip.id}`);
-        // navigate(`/trips/${trip.id}`);
+        // Navigate to the Trip Details page
+        navigate(`/trips/${trip.id}`);
     };
 
     const handleOpenConfirmDialog = (e) => {
