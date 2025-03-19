@@ -1,24 +1,51 @@
-import logo from './logo.svg';
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { ThemeProvider, createTheme } from '@mui/material/styles';
+import { CssBaseline } from '@mui/material';
+import { AuthProvider } from './contexts/AuthContext';
+import PrivateRoute from './components/PrivateRoute';
+import Login from './pages/Login';
+import Register from './pages/Register';
+import TripList from './pages/TripList';
 import './App.css';
 
+// Create a theme
+const theme = createTheme({
+  palette: {
+    primary: {
+      main: '#1976d2',
+    },
+    secondary: {
+      main: '#dc004e',
+    },
+  },
+});
+
 function App() {
+  // Get the basename from the homepage in package.json for GitHub Pages deployment
+  const basename = process.env.PUBLIC_URL || '';
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
-    </div>
+    <ThemeProvider theme={theme}>
+      <CssBaseline />
+      <Router basename={basename}>
+        <AuthProvider>
+          <Routes>
+            <Route path="/login" element={<Login />} />
+            <Route path="/register" element={<Register />} />
+            <Route 
+              path="/trips" 
+              element={
+                <PrivateRoute>
+                  <TripList />
+                </PrivateRoute>
+              } 
+            />
+            <Route path="/" element={<Navigate to="/login" />} />
+          </Routes>
+        </AuthProvider>
+      </Router>
+    </ThemeProvider>
   );
 }
 
