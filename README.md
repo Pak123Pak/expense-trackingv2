@@ -13,43 +13,12 @@ This project allows users to:
 
 The application is built with React and Firebase, and is deployed on GitHub Pages.
 
-## Implementation Progress
+## Phase 1: Project Setup and Authentication
 
-### Phase 1: Project Setup and Authentication (Completed)
 - Project structure setup
 - Firebase configuration
 - User authentication (login and registration)
 - Basic routing
-
-### Phase 2: Trip Management (Completed)
-- Trip List page implementation
-- Add New Trip functionality
-- Delete Trip functionality
-- Settings dialog for home currency
-- Trip storage in Firestore
-
-### Future Phases
-- Phase 3: Basic Expense Management
-- Phase 4: Advanced Expense Features
-- Phase 5: Currency Conversion
-- Phase 6: Trip Sharing and Collaboration
-- Phase 7: Expense Splitting and Debt Tracking
-- Phase 8: Data Visualization
-- Phase 9: Final Touches and Deployment
-
-## Features Implemented
-
-### Authentication
-- User registration with email and password
-- User login with email and password
-- Protected routes for authenticated users
-- User profiles in Firestore with settings
-
-### Trip Management
-- View list of trips
-- Create new trips with custom names
-- Delete trips with confirmation
-- Set home currency preference in settings
 
 ## Technologies Used
 
@@ -111,17 +80,13 @@ npm run deploy
 ## Project Structure
 
 - `src/components`: Reusable UI components
-  - `AddTripForm.js`: Dialog form for creating new trips
-  - `TripItem.js`: Component for displaying trip items in the list
-  - `SettingsDialog.js`: Dialog for user settings
-  - `PrivateRoute.js`: Route wrapper for authenticated routes
 - `src/contexts`: Context providers for state management
-  - `AuthContext.js`: Authentication context for user state
 - `src/pages`: Main application pages
-  - `Login.js`: Login page
-  - `Register.js`: Registration page
-  - `TripList.js`: Trip management page
 - `src/firebase.js`: Firebase configuration and service initialization
+
+# Getting Started with Create React App
+
+This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
 
 ## Available Scripts
 
@@ -132,14 +97,60 @@ In the project directory, you can run:
 Runs the app in the development mode.\
 Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
 
+The page will reload when you make changes.\
+You may also see any lint errors in the console.
+
 ### `npm test`
 
-Launches the test runner in the interactive watch mode.
+Launches the test runner in the interactive watch mode.\
+See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
 
 ### `npm run build`
 
-Builds the app for production to the `build` folder.
+Builds the app for production to the `build` folder.\
+It correctly bundles React in production mode and optimizes the build for the best performance.
 
-### `npm run deploy`
+The build is minified and the filenames include the hashes.\
+Your app is ready to be deployed!
 
-Deploys the application to GitHub Pages.
+See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+
+### `npm run eject`
+
+**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+
+If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+
+Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+
+You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+
+## Learn More
+
+You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+
+To learn React, check out the [React documentation](https://reactjs.org/).
+
+### Code Splitting
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+
+### Analyzing the Bundle Size
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+
+### Making a Progressive Web App
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+
+### Advanced Configuration
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
+
+### Deployment
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+
+### `npm run build` fails to minify
+
+This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)

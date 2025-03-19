@@ -1,5 +1,5 @@
 import React from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider, createTheme } from '@mui/material/styles';
 import { CssBaseline } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
@@ -22,11 +22,13 @@ const theme = createTheme({
 });
 
 function App() {
-  // No need for basename with HashRouter
+  // Get the basename from the homepage in package.json for GitHub Pages deployment
+  const basename = process.env.PUBLIC_URL || '';
+
   return (
     <ThemeProvider theme={theme}>
       <CssBaseline />
-      <Router>
+      <Router basename={basename}>
         <AuthProvider>
           <Routes>
             <Route path="/login" element={<Login />} />
