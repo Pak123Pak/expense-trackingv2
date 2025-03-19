@@ -17,10 +17,12 @@ import {
     Collapse,
     IconButton,
     Grid,
-    Rating
+    Rating,
+    Input
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import PhotoCamera from '@mui/icons-material/PhotoCamera';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { useExpense } from '../contexts/ExpenseContext';
@@ -41,7 +43,7 @@ const CURRENCIES = [
 ];
 
 export default function AddExpenseModal({ open, onClose, paidByOptions, expense }) {
-    const { addExpense } = useExpense();
+    const { addExpense, updateExpense } = useExpense();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
     const isEditMode = !!expense;
@@ -57,8 +59,16 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
         rating: 0,
         consecutiveDays: 1,
         personalSummary: '',
-        expenseDate: new Date()
+        expenseDate: new Date(),
+        photoURL: ''
     });
+
+    // Photo state
+    const [selectedPhoto, setSelectedPhoto] = useState(null);
+    const [photoPreview, setPhotoPreview] = useState('');
+
+    // Form validation errors
+    const [errors, setErrors] = useState({});
 
     // Initialize form data when editing
     useEffect(() => {
@@ -73,20 +83,24 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                 rating: expense.rating || 0,
                 consecutiveDays: expense.consecutiveDays || 1,
                 personalSummary: expense.personalSummary || '',
-                expenseDate: expense.expenseDate ? new Date(expense.expenseDate) : new Date()
+                expenseDate: expense.expenseDate ? new Date(expense.expenseDate) : new Date(),
+                photoURL: expense.photoURL || ''
             });
             
             // Show additional info if any of those fields are filled
             if (expense.rating > 0 || 
                 expense.consecutiveDays > 1 || 
-                expense.personalSummary) {
+                expense.personalSummary ||
+                expense.photoURL) {
                 setShowAdditionalInfo(true);
+            }
+            
+            // Set photo preview if available
+            if (expense.photoURL) {
+                setPhotoPreview(expense.photoURL);
             }
         }
     }, [expense, paidByOptions]);
-
-    // Form validation errors
-    const [errors, setErrors] = useState({});
 
     const handleChange = (e) => {
         const { name, value } = e.target;
@@ -104,6 +118,26 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
 
     const handleDateChange = (date) => {
         setFormData(prev => ({ ...prev, expenseDate: date }));
+    };
+
+    // Handle photo upload
+    const handlePhotoChange = (e) => {
+        if (e.target.files && e.target.files[0]) {
+            const file = e.target.files[0];
+            setSelectedPhoto(file);
+            
+            // Create a preview URL
+            const reader = new FileReader();
+            reader.onload = () => {
+                setPhotoPreview(reader.result);
+            };
+            reader.readAsDataURL(file);
+            
+            // Clear validation error if there was one
+            if (errors.photo) {
+                setErrors(prev => ({ ...prev, photo: '' }));
+            }
+        }
     };
 
     const toggleAdditionalInfo = () => {
@@ -133,6 +167,11 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             newErrors.consecutiveDays = 'Please enter a valid number of days (integer >= 1)';
         }
         
+        // Photo validation - check file size if a new photo is selected
+        if (selectedPhoto && selectedPhoto.size > 5 * 1024 * 1024) { // 5MB limit
+            newErrors.photo = 'Photo size should be less than 5MB';
+        }
+        
         setErrors(newErrors);
         return Object.keys(newErrors).length === 0;
     };
@@ -146,18 +185,25 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             // If description is empty, use the type as description
             const finalDescription = formData.description || formData.type;
             
+            // Process the photo if there's a new one
+            let photoURL = formData.photoURL;
+            if (selectedPhoto) {
+                // In a real app, you would upload the photo to storage here
+                // and get back a URL to store in the database
+                // For now, we'll just use the data URL as a placeholder
+                photoURL = photoPreview;
+            }
+            
             const expenseData = {
                 ...formData,
                 description: finalDescription,
                 amount: parseFloat(formData.amount),
-                consecutiveDays: parseInt(formData.consecutiveDays)
+                consecutiveDays: parseInt(formData.consecutiveDays),
+                photoURL
             };
             
             if (isEditMode) {
-                // In Phase 3, we're not implementing the edit functionality yet
-                // This will be implemented in Phase 4
-                console.log('Edit mode not implemented yet:', expenseData);
-                // For Phase 3 we'll just close the modal as if it was successful
+                await updateExpense(expense.id, expenseData);
             } else {
                 await addExpense(expenseData);
             }
@@ -182,10 +228,13 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             rating: 0,
             consecutiveDays: 1,
             personalSummary: '',
-            expenseDate: new Date()
+            expenseDate: new Date(),
+            photoURL: ''
         });
         setErrors({});
         setShowAdditionalInfo(false);
+        setSelectedPhoto(null);
+        setPhotoPreview('');
         onClose();
     };
 
@@ -359,18 +408,54 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                                 rows={2}
                             />
 
+                            {/* Photo Upload */}
+                            <Box sx={{ mb: 2 }}>
+                                <Typography variant="body2" gutterBottom>
+                                    Upload a photo
+                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                    <Button
+                                        variant="contained"
+                                        component="label"
+                                        startIcon={<PhotoCamera />}
+                                        color="secondary"
+                                    >
+                                        Choose File
+                                        <Input
+                                            type="file"
+                                            sx={{ display: 'none' }}
+                                            inputProps={{ accept: 'image/*' }}
+                                            onChange={handlePhotoChange}
+                                        />
+                                    </Button>
+                                    {errors.photo && (
+                                        <FormHelperText error>{errors.photo}</FormHelperText>
+                                    )}
+                                </Box>
+                                {photoPreview && (
+                                    <Box sx={{ mt: 2, textAlign: 'center' }}>
+                                        <img 
+                                            src={photoPreview} 
+                                            alt="Expense" 
+                                            style={{ 
+                                                maxWidth: '100%', 
+                                                maxHeight: '200px',
+                                                borderRadius: '4px'
+                                            }} 
+                                        />
+                                    </Box>
+                                )}
+                            </Box>
+
                             {/* Expense Date */}
                             <LocalizationProvider dateAdapter={AdapterDateFns}>
                                 <DatePicker
                                     label="Expense Date"
                                     value={formData.expenseDate}
                                     onChange={handleDateChange}
-                                    slotProps={{
-                                        textField: {
-                                            fullWidth: true,
-                                            sx: { mb: 2 }
-                                        }
-                                    }}
+                                    renderInput={(params) => (
+                                        <TextField {...params} fullWidth variant="outlined" />
+                                    )}
                                 />
                             </LocalizationProvider>
                         </Box>

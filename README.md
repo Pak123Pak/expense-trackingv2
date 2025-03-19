@@ -38,6 +38,17 @@ The application is built with React and Firebase, and is deployed on GitHub Page
 - Expense sorting options
 - Trip summary with total expense calculation
 
+## Phase 4: Advanced Expense Features
+
+- Edit Expense functionality
+- Additional expense fields:
+  - Star rating system (0-5 stars)
+  - Consecutive days tracking for multi-day expenses
+  - Personal notes/summary field
+  - Photo upload and display
+- Enhanced expense sorting options
+- Full CRUD operations for expenses
+
 ## Technologies Used
 
 - React

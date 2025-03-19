@@ -8,7 +8,8 @@ import {
     query, 
     where, 
     orderBy, 
-    serverTimestamp 
+    serverTimestamp,
+    updateDoc 
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
@@ -121,6 +122,43 @@ export function ExpenseProvider({ children, tripId }) {
         }
     }
 
+    // Update an existing expense
+    async function updateExpense(expenseId, expenseData) {
+        if (!currentUser || !tripId) return null;
+
+        try {
+            const expenseRef = doc(db, 'trips', tripId, 'expenses', expenseId);
+            
+            const updatedExpense = {
+                ...expenseData,
+                updatedAt: serverTimestamp(),
+            };
+            
+            await updateDoc(expenseRef, updatedExpense);
+            
+            // Update the expense in the local state
+            const updatedExpenses = expenses.map(expense => {
+                if (expense.id === expenseId) {
+                    return {
+                        ...expense,
+                        ...expenseData,
+                        updatedAt: new Date() // Use a JavaScript Date object for local state
+                    };
+                }
+                return expense;
+            });
+            
+            // Resort the expenses according to the current sort method
+            const sortedExpenses = sortExpenses(updatedExpenses, sortMethod);
+            setExpenses(sortedExpenses);
+            
+            return true;
+        } catch (error) {
+            console.error('Error updating expense:', error);
+            return false;
+        }
+    }
+
     // Delete an expense
     async function deleteExpense(expenseId) {
         if (!currentUser || !tripId) return false;
@@ -144,6 +182,7 @@ export function ExpenseProvider({ children, tripId }) {
         expenses,
         loading,
         addExpense,
+        updateExpense,
         deleteExpense,
         sortMethod,
         changeSortMethod

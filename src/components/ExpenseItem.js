@@ -24,6 +24,7 @@ export default function ExpenseItem({ expense, onEdit }) {
     const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
     const [showRating, setShowRating] = useState(false);
     const [showSummary, setShowSummary] = useState(false);
+    const [showPhoto, setShowPhoto] = useState(false);
     const { deleteExpense } = useExpense();
 
     // Format the expense date
@@ -79,6 +80,11 @@ export default function ExpenseItem({ expense, onEdit }) {
     const toggleSummary = (e) => {
         e.stopPropagation(); // Prevent the click from bubbling up to the parent
         setShowSummary(prev => !prev);
+    };
+
+    const togglePhoto = (e) => {
+        e.stopPropagation(); // Prevent the click from bubbling up to the parent
+        setShowPhoto(prev => !prev);
     };
 
     return (
@@ -173,6 +179,40 @@ export default function ExpenseItem({ expense, onEdit }) {
                             <Typography variant="body2" sx={{ ml: 2, mt: 1 }}>
                                 {expense.personalSummary}
                             </Typography>
+                        </Collapse>
+                    </Box>
+                )}
+                
+                {/* Photo (if available) */}
+                {expense.photoURL && (
+                    <Box sx={{ mb: 1 }}>
+                        <Box 
+                            sx={{ 
+                                display: 'flex', 
+                                alignItems: 'center',
+                                cursor: 'pointer'
+                            }}
+                            onClick={togglePhoto}
+                        >
+                            <Typography variant="body2" color="text.secondary">
+                                Show photo
+                            </Typography>
+                            <IconButton size="small">
+                                {showPhoto ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                            </IconButton>
+                        </Box>
+                        <Collapse in={showPhoto}>
+                            <Box sx={{ ml: 2, mt: 1, textAlign: 'center' }}>
+                                <img 
+                                    src={expense.photoURL} 
+                                    alt="Expense" 
+                                    style={{ 
+                                        maxWidth: '100%', 
+                                        maxHeight: '200px',
+                                        borderRadius: '4px'
+                                    }} 
+                                />
+                            </Box>
                         </Collapse>
                     </Box>
                 )}
