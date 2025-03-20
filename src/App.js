@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { HashRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { ThemeProvider } from '@mui/material/styles';
 import { CssBaseline, Alert, Box, Button } from '@mui/material';
 import { AuthProvider } from './contexts/AuthContext';
@@ -55,8 +55,9 @@ function App() {
   const [loading, setLoading] = useState(true);
   const [offlineStatus, setOfflineStatus] = useState(!navigator.onLine);
   
-  // For GitHub Pages, we use HashRouter instead of BrowserRouter to avoid the need for server-side routing
-  
+  // Get the basename from the homepage in package.json for GitHub Pages deployment
+  const basename = process.env.PUBLIC_URL || '';
+
   // Handle online/offline status
   useEffect(() => {
     const handleOnline = () => setOfflineStatus(false);
@@ -91,7 +92,7 @@ function App() {
             </Alert>
           )}
           
-          <Router>
+          <Router basename={basename}>
             <AuthProvider>
               <CurrencyProvider>
                 <TripProvider>
@@ -144,7 +145,7 @@ function App() {
                                 variant="contained" 
                                 color="primary" 
                                 sx={{ mt: 2 }}
-                                onClick={() => window.location.href = '/'}
+                                onClick={() => window.location.href = basename ? `${basename}/` : '/'}
                               >
                                 Go to Home
                               </Button>
