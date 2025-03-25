@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase';
 import { useAuth } from './AuthContext';
+import { useCurrency } from './CurrencyContext';
 
 const ExpenseContext = createContext();
 
@@ -23,8 +24,16 @@ export function useExpense() {
 export function ExpenseProvider({ children, tripId }) {
     const [expenses, setExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
-    const { currentUser } = useAuth();
-    const [sortMethod, setSortMethod] = useState('modifiedDesc');
+    const { currentUser, updateExpenseSortPreference } = useAuth();
+    const { expenseSortPreference } = useCurrency();
+    const [sortMethod, setSortMethod] = useState(expenseSortPreference);
+    
+    // Update sort method whenever the preference from CurrencyContext changes
+    useEffect(() => {
+        if (expenseSortPreference) {
+            setSortMethod(expenseSortPreference);
+        }
+    }, [expenseSortPreference]);
 
     // Fetch expenses whenever the tripId or sortMethod changes
     useEffect(() => {
@@ -173,9 +182,18 @@ export function ExpenseProvider({ children, tripId }) {
         }
     }
 
-    // Change sorting method
-    function changeSortMethod(method) {
+    // Change sorting method and save to user preferences
+    async function changeSortMethod(method) {
         setSortMethod(method);
+        
+        // Save the sort preference to user settings
+        if (currentUser) {
+            try {
+                await updateExpenseSortPreference(method);
+            } catch (error) {
+                console.error('Error saving sort preference:', error);
+            }
+        }
     }
 
     const value = {

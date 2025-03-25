@@ -12,15 +12,17 @@ export function useCurrency() {
 
 export function CurrencyProvider({ children }) {
   const [homeCurrency, setHomeCurrency] = useState('hkd');
+  const [expenseSortPreference, setExpenseSortPreference] = useState('modifiedDesc');
   const [availableCurrencies, setAvailableCurrencies] = useState({});
   const [loading, setLoading] = useState(true);
   const { currentUser } = useAuth();
 
-  // Load user's home currency from Firestore
+  // Load user's home currency and sort preference from Firestore
   useEffect(() => {
-    async function fetchUserCurrency() {
+    async function fetchUserPreferences() {
       if (!currentUser) {
         setHomeCurrency('hkd');
+        setExpenseSortPreference('modifiedDesc');
         setLoading(false);
         return;
       }
@@ -30,15 +32,16 @@ export function CurrencyProvider({ children }) {
         if (userDoc.exists()) {
           const userData = userDoc.data();
           setHomeCurrency(userData.homeCurrency || 'hkd');
+          setExpenseSortPreference(userData.expenseSortPreference || 'modifiedDesc');
         }
       } catch (error) {
-        console.error('Error fetching user currency:', error);
+        console.error('Error fetching user preferences:', error);
       } finally {
         setLoading(false);
       }
     }
 
-    fetchUserCurrency();
+    fetchUserPreferences();
   }, [currentUser]);
 
   // Load available currencies
@@ -72,42 +75,54 @@ export function CurrencyProvider({ children }) {
     }
   }
 
-  // Convert amount from one currency to another
-  async function convert(amount, fromCurrency, toCurrency = homeCurrency) {
+  // Update user's expense sort preference in Firestore
+  async function updateExpenseSortPreference(sortMethod) {
+    if (!currentUser) return false;
+
     try {
-      const convertedAmount = await convertCurrency(
-        amount,
-        fromCurrency,
-        toCurrency
-      );
-      return convertedAmount;
+      const userRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(userRef, {
+        expenseSortPreference: sortMethod
+      });
+      setExpenseSortPreference(sortMethod);
+      return true;
     } catch (error) {
-      console.error('Error converting currency:', error);
-      return amount;
+      console.error('Error updating expense sort preference:', error);
+      return false;
     }
   }
 
-  // Format with both original and converted amounts
-  async function formatWithConversion(amount, fromCurrency) {
-    // Format the original amount
-    const formatted = formatCurrency(amount, fromCurrency);
-    
-    // If the currency is already the home currency, no need to convert
-    if (fromCurrency.toLowerCase() === homeCurrency.toLowerCase()) {
-      return formatted;
+  // Currency conversion logic 
+  async function convert(amount, fromCurrency, toCurrency = homeCurrency) {
+    if (fromCurrency === toCurrency) {
+      return amount;
     }
     
     try {
-      // Convert to home currency
+      return await convertCurrency(amount, fromCurrency, toCurrency);
+    } catch (error) {
+      console.error('Error converting currency:', error);
+      return amount; // Return original amount if conversion fails
+    }
+  }
+
+  // Function to format currency with conversion
+  async function formatWithConversion(amount, fromCurrency) {
+    const original = formatCurrency(amount, fromCurrency);
+    
+    // If the currency is already the home currency, just return the formatted amount
+    if (fromCurrency.toLowerCase() === homeCurrency.toLowerCase()) {
+      return original;
+    }
+    
+    // Otherwise, convert and format
+    try {
       const convertedAmount = await convert(amount, fromCurrency);
-      // Format the converted amount
       const formattedConverted = formatCurrency(convertedAmount, homeCurrency);
-      
-      // Return both values
-      return `${formatted} (${formattedConverted})`;
+      return `${original} (${formattedConverted})`;
     } catch (error) {
       console.error('Error formatting with conversion:', error);
-      return formatted;
+      return original;
     }
   }
 
@@ -115,10 +130,12 @@ export function CurrencyProvider({ children }) {
     homeCurrency,
     availableCurrencies,
     loading,
-    updateHomeCurrency,
     convert,
+    formatCurrency,
     formatWithConversion,
-    formatCurrency
+    updateHomeCurrency,
+    expenseSortPreference,
+    updateExpenseSortPreference
   };
 
   return (

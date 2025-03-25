@@ -16,6 +16,7 @@ Visit the application at: [https://Pak123Pak.github.io/expense-trackingv2/](http
 - **Expense Splitting**: Split expenses among trip mates with various methods
 - **Debt Tracking**: Calculate and settle debts between trip mates
 - **Data Visualization**: View expenses by type or day-by-day breakdown
+- **User Preferences**: Persistent settings like home currency and expense sorting method
 - **Responsive Design**: Works on mobile, tablet, and desktop devices
 
 ## Technologies Used
@@ -152,7 +153,13 @@ expense-trackingv2/
 - Create charts for day-by-day expenses
 - Add filtering options for charts
 
-### Phase 9: Final Touches and Deployment ✅
+### Phase 9: User Preference Enhancements ✅
+- Implement persistent expense sorting preference
+- Save user sorting preference to Firestore
+- Apply consistent sorting across all trips
+- Add responsive feedback for preference changes
+
+### Phase 10: Final Touches and Deployment ✅
 - Implement responsive design
 - Add error handling and loading states
 - Clean up UI/UX

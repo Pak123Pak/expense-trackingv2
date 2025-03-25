@@ -30,6 +30,7 @@ export function AuthProvider({ children }) {
                             email,
                             displayName,
                             homeCurrency: 'hkd',
+                            expenseSortPreference: 'modifiedDesc', // Default sort preference
                             createdAt: new Date().toISOString()
                         });
                     })
@@ -71,6 +72,23 @@ export function AuthProvider({ children }) {
         }
     }
 
+    // Function to update expense sort preference
+    async function updateExpenseSortPreference(sortMethod) {
+        if (!currentUser) return false;
+        
+        try {
+            // Update in Firestore
+            await updateDoc(doc(db, 'users', currentUser.uid), {
+                expenseSortPreference: sortMethod
+            });
+            
+            return true;
+        } catch (error) {
+            console.error('Error updating expense sort preference:', error);
+            return false;
+        }
+    }
+
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
@@ -85,7 +103,8 @@ export function AuthProvider({ children }) {
         signup,
         login,
         logout,
-        updateDisplayName
+        updateDisplayName,
+        updateExpenseSortPreference
     };
 
     return (
