@@ -138,6 +138,10 @@ export default function ExpenseClassification() {
             typeAmounts[type] = 0;
         });
         
+        // Get trip details to determine tripmates
+        const tripDetails = await getTripDetails(tripId);
+        const allTripmates = tripDetails.tripmates || [];
+        
         // Calculate total for each type (convert to home currency)
         for (const expense of filteredExpenses) {
             const type = expense.type || 'Other';
@@ -147,7 +151,50 @@ export default function ExpenseClassification() {
                 homeCurrency
             );
             
-            typeAmounts[type] = (typeAmounts[type] || 0) + convertedAmount;
+            // Handle based on split method
+            if (expense.splitMethod === "Don't split") {
+                // If showing "All" users or viewing the specific user who paid
+                if (selectedUser === 'All' || selectedUser === expense.paidBy) {
+                    typeAmounts[type] = (typeAmounts[type] || 0) + convertedAmount;
+                }
+            } 
+            else if (expense.splitMethod === "Everyone") {
+                const perPersonAmount = convertedAmount / allTripmates.length;
+                
+                if (selectedUser === 'All') {
+                    // For "All" view, show the entire expense amount
+                    typeAmounts[type] = (typeAmounts[type] || 0) + convertedAmount;
+                } else {
+                    // For individual view, only show this person's share
+                    // Find if the selected user is one of the tripmates
+                    const tripmateEmails = allTripmates.map(tm => tm.email);
+                    if (tripmateEmails.includes(selectedUser)) {
+                        typeAmounts[type] = (typeAmounts[type] || 0) + perPersonAmount;
+                    }
+                }
+            }
+            else if (expense.splitMethod === "Individuals") {
+                // Handle individual splitting based on selected individuals
+                const splitWithEmails = expense.splitWith || [];
+                const splitCount = splitWithEmails.length;
+                
+                if (splitCount === 0) {
+                    // If no one is selected to split with, treat like "Don't split"
+                    if (selectedUser === 'All' || selectedUser === expense.paidBy) {
+                        typeAmounts[type] = (typeAmounts[type] || 0) + convertedAmount;
+                    }
+                } else {
+                    const perPersonAmount = convertedAmount / splitCount;
+                    
+                    if (selectedUser === 'All') {
+                        // For "All" view, show the entire expense amount
+                        typeAmounts[type] = (typeAmounts[type] || 0) + convertedAmount;
+                    } else if (splitWithEmails.includes(selectedUser)) {
+                        // This user is specifically included in the split
+                        typeAmounts[type] = (typeAmounts[type] || 0) + perPersonAmount;
+                    }
+                }
+            }
         }
         
         // Filter out types with no expenses
@@ -172,26 +219,79 @@ export default function ExpenseClassification() {
         // Map to store date -> amount pairs
         const dateAmounts = {};
         
+        // Get trip details to determine tripmates
+        const tripDetails = await getTripDetails(tripId);
+        const allTripmates = tripDetails.tripmates || [];
+        
         // For each expense, calculate daily amounts based on consecutive days
         for (const expense of filteredExpenses) {
             const startDate = new Date(expense.expenseDate);
             const consecutiveDays = expense.consecutiveDays || 1;
-            const dailyAmount = expense.amount / consecutiveDays;
             
             // Convert to home currency
-            const convertedDailyAmount = await convert(
-                dailyAmount,
+            const convertedAmount = await convert(
+                expense.amount,
                 expense.currency,
                 homeCurrency
             );
             
-            // Add amount to each day within the expense's duration
-            for (let i = 0; i < consecutiveDays; i++) {
-                const currentDate = new Date(startDate);
-                currentDate.setDate(startDate.getDate() + i);
+            let amountToDistribute = 0;
+            
+            // Handle based on split method
+            if (expense.splitMethod === "Don't split") {
+                // If showing "All" users or viewing the specific user who paid
+                if (selectedUser === 'All' || selectedUser === expense.paidBy) {
+                    amountToDistribute = convertedAmount;
+                }
+            } 
+            else if (expense.splitMethod === "Everyone") {
+                const perPersonAmount = convertedAmount / allTripmates.length;
                 
-                const dateString = currentDate.toISOString().split('T')[0];
-                dateAmounts[dateString] = (dateAmounts[dateString] || 0) + convertedDailyAmount;
+                if (selectedUser === 'All') {
+                    // For "All" view, show the entire expense amount
+                    amountToDistribute = convertedAmount;
+                } else {
+                    // For individual view, only show this person's share
+                    const tripmateEmails = allTripmates.map(tm => tm.email);
+                    if (tripmateEmails.includes(selectedUser)) {
+                        amountToDistribute = perPersonAmount;
+                    }
+                }
+            }
+            else if (expense.splitMethod === "Individuals") {
+                // Handle individual splitting based on selected individuals
+                const splitWithEmails = expense.splitWith || [];
+                const splitCount = splitWithEmails.length;
+                
+                if (splitCount === 0) {
+                    // If no one is selected to split with, treat like "Don't split"
+                    if (selectedUser === 'All' || selectedUser === expense.paidBy) {
+                        amountToDistribute = convertedAmount;
+                    }
+                } else {
+                    const perPersonAmount = convertedAmount / splitCount;
+                    
+                    if (selectedUser === 'All') {
+                        // For "All" view, show the entire expense amount
+                        amountToDistribute = convertedAmount;
+                    } else if (splitWithEmails.includes(selectedUser)) {
+                        // This user is specifically included in the split
+                        amountToDistribute = perPersonAmount;
+                    }
+                }
+            }
+            
+            if (amountToDistribute > 0) {
+                const dailyAmount = amountToDistribute / consecutiveDays;
+                
+                // Add amount to each day within the expense's duration
+                for (let i = 0; i < consecutiveDays; i++) {
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + i);
+                    
+                    const dateString = currentDate.toISOString().split('T')[0];
+                    dateAmounts[dateString] = (dateAmounts[dateString] || 0) + dailyAmount;
+                }
             }
         }
         
