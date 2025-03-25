@@ -114,6 +114,14 @@ export function NotificationProvider({ children }) {
         try {
             const notificationRef = doc(db, 'users', currentUser.uid, 'notifications', notificationId);
             
+            // Get the notification document first to ensure we have the latest data
+            const notificationDoc = await getDoc(notificationRef);
+            if (!notificationDoc.exists()) {
+                throw new Error('Notification not found');
+            }
+            
+            const notification = notificationDoc.data();
+            
             // Mark as read and update status
             await updateDoc(notificationRef, {
                 read: true,
@@ -121,30 +129,29 @@ export function NotificationProvider({ children }) {
             });
             
             if (accepted) {
-                // Find the notification data from state
-                const notification = notifications.find(n => n.id === notificationId);
-                
-                if (!notification) {
-                    throw new Error('Notification not found');
-                }
-                
                 // Add user to trip's tripmates
                 const tripRef = doc(db, 'trips', notification.tripId);
                 
                 // Get current tripmates
-                const tripDoc = await getDoc(doc(db, 'trips', notification.tripId));
+                const tripDoc = await getDoc(tripRef);
                 if (!tripDoc.exists()) {
                     throw new Error('Trip not found');
                 }
                 
                 const tripData = tripDoc.data();
-                const updatedTripmates = [...(tripData.tripmates || []), currentUser.uid];
                 
-                // Update tripmates
-                await updateDoc(tripRef, {
-                    tripmates: updatedTripmates,
-                    updatedAt: serverTimestamp()
-                });
+                // Check if user is already in tripmates to avoid duplicates
+                if (!tripData.tripmates.includes(currentUser.uid)) {
+                    const updatedTripmates = [...tripData.tripmates, currentUser.uid];
+                    
+                    // Update tripmates
+                    await updateDoc(tripRef, {
+                        tripmates: updatedTripmates,
+                        updatedAt: serverTimestamp()
+                    });
+                    
+                    console.log(`User ${currentUser.uid} added to trip ${notification.tripId}`);
+                }
             }
             
             return true;

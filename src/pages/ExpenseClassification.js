@@ -201,15 +201,15 @@ export default function ExpenseClassification() {
         
         // Format dates for display
         const formattedDates = sortedDates.map(date => {
-            const [year, month, day] = date.split('-');
-            return `${day}/${month}/${year}`;
+            const d = new Date(date);
+            return d.toLocaleDateString();
         });
         
         setChartData({
             labels: formattedDates,
             datasets: [
                 {
-                    label: `Expenses by Day (${homeCurrency.toUpperCase()})`,
+                    label: `Daily Expenses (${homeCurrency.toUpperCase()})`,
                     data: sortedAmounts,
                     backgroundColor: 'rgba(75, 192, 192, 0.6)',
                     borderColor: 'rgba(75, 192, 192, 1)',
@@ -230,35 +230,72 @@ export default function ExpenseClassification() {
     const handleSelectedUserChange = (event) => {
         setSelectedUser(event.target.value);
     };
+
+    // Helper function to get display name for an email
+    const getDisplayNameForEmail = (email) => {
+        const tripmate = tripmates.find(tm => tm.email === email);
+        return tripmate ? tripmate.displayName : email;
+    };
     
     // Chart options
     const chartOptions = {
         responsive: true,
         maintainAspectRatio: false,
+        plugins: {
+            legend: {
+                position: 'top',
+            },
+            title: {
+                display: true,
+                text: classificationType === 'Type' 
+                    ? 'Expenses by Type' 
+                    : 'Expenses by Date',
+                font: {
+                    size: 16
+                }
+            },
+            tooltip: {
+                callbacks: {
+                    label: function(context) {
+                        const value = context.raw;
+                        return `${formatCurrency(value, homeCurrency)}`;
+                    }
+                }
+            }
+        },
         scales: {
             y: {
                 beginAtZero: true,
                 ticks: {
                     callback: function(value) {
-                        return formatCurrency(value, homeCurrency, false);
-                    }
-                }
-            }
-        },
-        plugins: {
-            tooltip: {
-                callbacks: {
-                    label: function(context) {
-                        return formatCurrency(context.raw, homeCurrency);
+                        return formatCurrency(value, homeCurrency, true);
                     }
                 }
             }
         }
     };
     
+    if (error) {
+        return (
+            <Container sx={{ mt: 4 }}>
+                <Typography color="error" variant="h6">
+                    {error}
+                </Typography>
+                <Button 
+                    variant="contained" 
+                    color="primary" 
+                    onClick={handleBackToTrip}
+                    sx={{ mt: 2 }}
+                >
+                    Back to Trip
+                </Button>
+            </Container>
+        );
+    }
+
     return (
         <>
-            <AppBar position="static">
+            <AppBar position="static" color="default">
                 <Toolbar>
                     <IconButton
                         edge="start"
@@ -268,72 +305,90 @@ export default function ExpenseClassification() {
                     >
                         <ArrowBackIcon />
                     </IconButton>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1, ml: 2 }}>
-                        Expense Classification
-                        {trip && ` - ${trip.name}`}
+                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
+                        {trip ? `${trip.name} - Expense Classification` : 'Expense Classification'}
                     </Typography>
                     <SettingsMenu />
                 </Toolbar>
             </AppBar>
             
-            <Container sx={{ mt: 4, mb: 4 }}>
+            <Container sx={{ mt: 4 }}>
                 {loading ? (
-                    <Box sx={{ display: 'flex', justifyContent: 'center', my: 4 }}>
+                    <Box sx={{ display: 'flex', justifyContent: 'center', mt: 10 }}>
                         <CircularProgress />
                     </Box>
-                ) : error ? (
-                    <Paper sx={{ p: 3, mb: 4 }}>
-                        <Typography color="error">{error}</Typography>
-                    </Paper>
                 ) : (
                     <>
-                        {/* Classification Controls */}
-                        <Paper sx={{ p: 3, mb: 4 }}>
-                            <Box sx={{ display: 'flex', flexDirection: { xs: 'column', sm: 'row' }, gap: 2, mb: 2 }}>
-                                <FormControl fullWidth variant="outlined">
-                                    <InputLabel>Classification</InputLabel>
-                                    <Select
-                                        value={classificationType}
-                                        onChange={handleClassificationTypeChange}
-                                        label="Classification"
-                                    >
-                                        <MenuItem value="Type">Type</MenuItem>
-                                        <MenuItem value="Day by day">Day by day</MenuItem>
-                                    </Select>
-                                </FormControl>
-                                
-                                <FormControl fullWidth variant="outlined">
-                                    <InputLabel>User</InputLabel>
-                                    <Select
-                                        value={selectedUser}
-                                        onChange={handleSelectedUserChange}
-                                        label="User"
-                                    >
-                                        <MenuItem value="All">All</MenuItem>
-                                        {tripmates.map(tripmate => (
-                                            <MenuItem key={tripmate.uid} value={tripmate.email}>
-                                                {tripmate.email} {tripmate.uid === currentUser.uid ? '(You)' : ''}
-                                            </MenuItem>
-                                        ))}
-                                    </Select>
-                                </FormControl>
-                            </Box>
+                        <Box sx={{ mb: 4, display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+                            <FormControl sx={{ minWidth: 200 }}>
+                                <InputLabel>Classification</InputLabel>
+                                <Select
+                                    value={classificationType}
+                                    onChange={handleClassificationTypeChange}
+                                    label="Classification"
+                                >
+                                    <MenuItem value="Type">Type</MenuItem>
+                                    <MenuItem value="Day by day">Day by day</MenuItem>
+                                </Select>
+                            </FormControl>
                             
-                            <Typography variant="caption" color="text.secondary">
-                                All amounts converted to your home currency ({homeCurrency.toUpperCase()})
-                            </Typography>
-                        </Paper>
+                            <FormControl sx={{ minWidth: 200 }}>
+                                <InputLabel>User</InputLabel>
+                                <Select
+                                    value={selectedUser}
+                                    onChange={handleSelectedUserChange}
+                                    label="User"
+                                >
+                                    <MenuItem value="All">All Users</MenuItem>
+                                    {tripmates.map(tripmate => (
+                                        <MenuItem 
+                                            key={tripmate.email} 
+                                            value={tripmate.email}
+                                        >
+                                            {tripmate.displayName || tripmate.email}
+                                            {tripmate.uid === currentUser?.uid && " (You)"}
+                                        </MenuItem>
+                                    ))}
+                                </Select>
+                            </FormControl>
+                        </Box>
                         
-                        {/* Chart */}
-                        <Paper sx={{ p: 3, height: 500 }}>
-                            {expenses.length === 0 ? (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                        <Paper 
+                            elevation={3} 
+                            sx={{ 
+                                p: 3, 
+                                height: 500, 
+                                display: 'flex',
+                                flexDirection: 'column'
+                            }}
+                        >
+                            {expenses.length > 0 ? (
+                                <>
+                                    {selectedUser !== 'All' && (
+                                        <Typography variant="subtitle1" sx={{ mb: 2 }}>
+                                            Viewing expenses for: {getDisplayNameForEmail(selectedUser)}
+                                        </Typography>
+                                    )}
+                                    <Box sx={{ flexGrow: 1 }}>
+                                        <Bar 
+                                            options={chartOptions} 
+                                            data={chartData}
+                                        />
+                                    </Box>
+                                </>
+                            ) : (
+                                <Box 
+                                    sx={{ 
+                                        display: 'flex', 
+                                        justifyContent: 'center', 
+                                        alignItems: 'center',
+                                        height: '100%'
+                                    }}
+                                >
                                     <Typography variant="h6" color="text.secondary">
-                                        No expense data available
+                                        No expenses found for this trip
                                     </Typography>
                                 </Box>
-                            ) : (
-                                <Bar data={chartData} options={chartOptions} />
                             )}
                         </Paper>
                     </>

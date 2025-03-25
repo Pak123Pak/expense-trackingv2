@@ -29,11 +29,14 @@ import { useNotification } from '../contexts/NotificationContext';
 export default function SettingsMenu() {
     const [anchorEl, setAnchorEl] = useState(null);
     const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
+    const [nameDialogOpen, setNameDialogOpen] = useState(false);
     const [selectedCurrency, setSelectedCurrency] = useState('');
+    const [newDisplayName, setNewDisplayName] = useState('');
     const [saving, setSaving] = useState(false);
+    const [nameError, setNameError] = useState('');
     
     const navigate = useNavigate();
-    const { logout } = useAuth();
+    const { logout, currentUser, updateDisplayName } = useAuth();
     const { homeCurrency, availableCurrencies, updateHomeCurrency } = useCurrency();
     const { unreadCount } = useNotification();
     const menuButtonRef = useRef(null);
@@ -42,6 +45,13 @@ export default function SettingsMenu() {
     useEffect(() => {
         setSelectedCurrency(homeCurrency);
     }, [homeCurrency]);
+
+    // Set display name when current user changes
+    useEffect(() => {
+        if (currentUser?.displayName) {
+            setNewDisplayName(currentUser.displayName);
+        }
+    }, [currentUser]);
 
     const handleOpenSettings = (event) => {
         setAnchorEl(event.currentTarget);
@@ -91,6 +101,47 @@ export default function SettingsMenu() {
         }
     };
     
+    const handleOpenNameDialog = () => {
+        setNameDialogOpen(true);
+        setNewDisplayName(currentUser?.displayName || '');
+        handleCloseSettings();
+    };
+    
+    const handleCloseNameDialog = () => {
+        setNameDialogOpen(false);
+        setNameError('');
+    };
+    
+    const handleDisplayNameChange = (event) => {
+        setNewDisplayName(event.target.value);
+        if (nameError) setNameError('');
+    };
+    
+    const handleSaveDisplayName = async () => {
+        // Validate name
+        if (!newDisplayName.trim()) {
+            setNameError('Display name cannot be empty');
+            return;
+        }
+        
+        // If name didn't change, just close the dialog
+        if (newDisplayName === currentUser?.displayName) {
+            handleCloseNameDialog();
+            return;
+        }
+        
+        setSaving(true);
+        try {
+            await updateDisplayName(newDisplayName.trim());
+            handleCloseNameDialog();
+        } catch (error) {
+            console.error('Error updating display name:', error);
+            setNameError('Failed to update display name');
+        } finally {
+            setSaving(false);
+        }
+    };
+    
     const handleOpenNotifications = () => {
         handleCloseSettings();
         navigate('/notifications');
@@ -133,6 +184,9 @@ export default function SettingsMenu() {
                     </Typography>
                 </MenuItem>
                 <Divider />
+                <MenuItem onClick={handleOpenNameDialog}>
+                    Change Display Name
+                </MenuItem>
                 <MenuItem onClick={handleOpenCurrencyDialog}>
                     Change Home Currency
                 </MenuItem>
@@ -185,6 +239,42 @@ export default function SettingsMenu() {
                     </Button>
                     <Button 
                         onClick={handleSaveCurrency} 
+                        variant="contained" 
+                        color="primary"
+                        disabled={saving}
+                    >
+                        {saving ? <CircularProgress size={24} /> : 'Save'}
+                    </Button>
+                </DialogActions>
+            </Dialog>
+            
+            {/* Display Name Settings Dialog */}
+            <Dialog open={nameDialogOpen} onClose={handleCloseNameDialog}>
+                <DialogTitle>Change Display Name</DialogTitle>
+                <DialogContent>
+                    <Typography variant="body2" paragraph>
+                        Enter your new display name. This is how you'll appear to others in trips and expenses.
+                    </Typography>
+                    
+                    <TextField
+                        autoFocus
+                        margin="normal"
+                        label="Display Name"
+                        type="text"
+                        fullWidth
+                        value={newDisplayName}
+                        onChange={handleDisplayNameChange}
+                        disabled={saving}
+                        error={!!nameError}
+                        helperText={nameError}
+                    />
+                </DialogContent>
+                <DialogActions>
+                    <Button onClick={handleCloseNameDialog} disabled={saving}>
+                        Cancel
+                    </Button>
+                    <Button 
+                        onClick={handleSaveDisplayName} 
                         variant="contained" 
                         color="primary"
                         disabled={saving}

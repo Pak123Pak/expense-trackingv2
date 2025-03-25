@@ -31,10 +31,13 @@ import {
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import PhotoCamera from '@mui/icons-material/PhotoCamera';
+import DeleteIcon from '@mui/icons-material/Delete';
 import { AdapterDateFns } from '@mui/x-date-pickers/AdapterDateFns';
 import { LocalizationProvider, DatePicker } from '@mui/x-date-pickers';
 import { useExpense } from '../contexts/ExpenseContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useTrip } from '../contexts/TripContext';
+import { useParams } from 'react-router-dom';
 
 const EXPENSE_TYPES = [
     'Flights',
@@ -47,12 +50,15 @@ const EXPENSE_TYPES = [
     'Other'
 ];
 
-export default function AddExpenseModal({ open, onClose, paidByOptions, expense }) {
+export default function AddExpenseModal({ open, onClose, paidByOptions = [], expense }) {
+    const { tripId } = useParams();
     const { addExpense, updateExpense } = useExpense();
     const { availableCurrencies, homeCurrency } = useCurrency();
+    const { getTripDetails } = useTrip();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [showAdditionalInfo, setShowAdditionalInfo] = useState(false);
     const isEditMode = !!expense;
+    const [tripmates, setTripmates] = useState([]);
     
     // Form state
     const [formData, setFormData] = useState({
@@ -78,6 +84,24 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
 
     // New state for individual split
     const [individualSplits, setIndividualSplits] = useState([]);
+
+    // Fetch tripmates with their display names
+    useEffect(() => {
+        async function fetchTripmates() {
+            if (!tripId) return;
+            
+            try {
+                const tripDetails = await getTripDetails(tripId);
+                if (tripDetails?.tripmates) {
+                    setTripmates(tripDetails.tripmates);
+                }
+            } catch (error) {
+                console.error('Error fetching tripmates:', error);
+            }
+        }
+        
+        fetchTripmates();
+    }, [tripId, getTripDetails]);
 
     // Initialize form data when editing
     useEffect(() => {
@@ -164,6 +188,12 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
         }
     };
 
+    // Find display name for an email
+    const getDisplayNameForEmail = (email) => {
+        const tripmate = tripmates.find(tm => tm.email === email);
+        return tripmate ? tripmate.displayName || email : email;
+    };
+
     // Handle individual split selection
     const handleIndividualSplitChange = (email) => {
         setIndividualSplits(prev => {
@@ -199,17 +229,15 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             newErrors.paidBy = 'Please select who paid';
         }
         
-        if (!formData.splitMethod) {
-            newErrors.splitMethod = 'Please select how to split';
-        }
-        
-        // Validate that at least one person is selected for individual split
         if (formData.splitMethod === 'Individuals' && individualSplits.length === 0) {
-            newErrors.splitWith = 'Please select at least one person';
+            newErrors.splitWith = 'Please select at least one person to split with';
         }
         
-        if (formData.consecutiveDays !== '' && (isNaN(formData.consecutiveDays) || parseInt(formData.consecutiveDays) < 1)) {
-            newErrors.consecutiveDays = 'Please enter a valid number of days (minimum 1)';
+        if (formData.consecutiveDays && (
+            isNaN(formData.consecutiveDays) || 
+            parseInt(formData.consecutiveDays) <= 0
+        )) {
+            newErrors.consecutiveDays = 'Please enter a positive number';
         }
         
         setErrors(newErrors);
@@ -221,23 +249,26 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             return;
         }
         
+        setIsSubmitting(true);
+        
         try {
-            setIsSubmitting(true);
-            
-            // Prepare expense data from form
             const expenseData = {
                 ...formData,
                 amount: parseFloat(formData.amount),
                 consecutiveDays: parseInt(formData.consecutiveDays),
-                // For new expenses, use type as description if no description provided
-                description: formData.description || formData.type,
-                // Convert date to ISO string for storage
                 expenseDate: formData.expenseDate.toISOString(),
-                // Use photo preview as URL (in a real app, this would be uploaded to storage)
-                photoURL: photoPreview,
-                // Add split information if using individual split
-                splitWith: formData.splitMethod === 'Individuals' ? individualSplits : []
+                tripId
             };
+            
+            // Include splitWith if method is Individuals
+            if (formData.splitMethod === 'Individuals') {
+                expenseData.splitWith = individualSplits;
+            }
+            
+            // Use the data URL from the preview if a new photo was selected
+            if (selectedPhoto && photoPreview) {
+                expenseData.photoURL = photoPreview;
+            }
             
             if (isEditMode) {
                 await updateExpense(expense.id, expenseData);
@@ -245,7 +276,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                 await addExpense(expenseData);
             }
             
-            onClose();
+            handleClose();
         } catch (error) {
             console.error('Error saving expense:', error);
         } finally {
@@ -254,7 +285,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
     };
     
     const handleClose = () => {
-        // Reset form and errors
+        // Reset form and state
         setFormData({
             currency: homeCurrency || 'hkd',
             amount: '',
@@ -268,9 +299,9 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             expenseDate: new Date(),
             photoURL: ''
         });
-        setErrors({});
         setSelectedPhoto(null);
         setPhotoPreview('');
+        setErrors({});
         setShowAdditionalInfo(false);
         setIndividualSplits([]);
         
@@ -278,10 +309,10 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
     };
 
     return (
-        <Dialog
-            open={open}
+        <Dialog 
+            open={open} 
             onClose={handleClose}
-            maxWidth="md"
+            maxWidth="sm"
             fullWidth
         >
             <DialogTitle>
@@ -289,87 +320,63 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             </DialogTitle>
             
             <DialogContent>
-                {/* First Line: Currency and Amount */}
-                <Box sx={{ display: 'flex', mb: 2, mt: 1, flexWrap: 'nowrap', gap: 2 }}>
-                    <FormControl 
-                        sx={{ width: '40%' }}
-                        error={!!errors.currency}
-                    >
-                        <Autocomplete
-                            id="currency-autocomplete"
-                            options={Object.keys(availableCurrencies).sort((a, b) => {
-                                // Show home currency first
-                                if (a.toLowerCase() === homeCurrency) return -1;
-                                if (b.toLowerCase() === homeCurrency) return 1;
-                                return a.localeCompare(b);
-                            })}
-                            getOptionLabel={(option) => 
-                                `${option.toUpperCase()} - ${availableCurrencies[option] || ''}`
-                            }
-                            value={formData.currency ? formData.currency.toUpperCase() : null}
-                            onChange={(event, newValue) => {
-                                if (newValue) {
-                                    setFormData({
-                                        ...formData,
-                                        currency: newValue.toLowerCase()
-                                    });
-                                    
-                                    // Clear any currency errors
-                                    if (errors.currency) {
-                                        setErrors({...errors, currency: ''});
-                                    }
-                                }
-                            }}
-                            renderInput={(params) => 
-                                <TextField 
-                                    {...params} 
-                                    label="Currency" 
-                                    error={!!errors.currency}
-                                    helperText={errors.currency}
-                                />
-                            }
-                            filterOptions={(options, { inputValue }) => {
-                                const filter = inputValue.toLowerCase();
-                                return options.filter(option => 
-                                    option.toLowerCase().includes(filter) || 
-                                    availableCurrencies[option]?.toLowerCase().includes(filter)
-                                );
+                {/* Currency and Amount */}
+                <Grid container spacing={2} sx={{ mt: 0.5 }}>
+                    <Grid item xs={5}>
+                        <FormControl 
+                            fullWidth 
+                            error={!!errors.currency}
+                        >
+                            <InputLabel>Currency</InputLabel>
+                            <Select
+                                name="currency"
+                                value={formData.currency}
+                                onChange={handleChange}
+                                label="Currency"
+                            >
+                                {Object.keys(availableCurrencies).map(code => (
+                                    <MenuItem key={code} value={code}>
+                                        {code.toUpperCase()} - {availableCurrencies[code]}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                            {errors.currency && (
+                                <FormHelperText>{errors.currency}</FormHelperText>
+                            )}
+                        </FormControl>
+                    </Grid>
+                    <Grid item xs={7}>
+                        <TextField
+                            fullWidth
+                            label="Amount"
+                            name="amount"
+                            value={formData.amount}
+                            onChange={handleChange}
+                            error={!!errors.amount}
+                            helperText={errors.amount}
+                            InputProps={{
+                                startAdornment: (
+                                    <InputAdornment position="start">
+                                        {formData.currency.toUpperCase()}
+                                    </InputAdornment>
+                                ),
                             }}
                         />
-                    </FormControl>
-                    
-                    <TextField
-                        sx={{ width: '60%' }}
-                        label="Amount"
-                        name="amount"
-                        type="number"
-                        value={formData.amount}
-                        onChange={handleChange}
-                        error={!!errors.amount}
-                        helperText={errors.amount}
-                        InputProps={{
-                            startAdornment: (
-                                <InputAdornment position="start">
-                                    {formData.currency.toUpperCase()}
-                                </InputAdornment>
-                            ),
-                        }}
-                    />
-                </Box>
+                    </Grid>
+                </Grid>
                 
-                {/* Second Line: Expense Type */}
+                {/* Type */}
                 <FormControl 
                     fullWidth 
-                    sx={{ mb: 2 }}
+                    sx={{ mt: 2 }}
                     error={!!errors.type}
                 >
-                    <InputLabel id="type-label">Type of Expense</InputLabel>
+                    <InputLabel>Type</InputLabel>
                     <Select
-                        labelId="type-label"
                         name="type"
                         value={formData.type}
                         onChange={handleChange}
-                        label="Type of Expense"
+                        label="Type"
                     >
                         {EXPENSE_TYPES.map(type => (
                             <MenuItem key={type} value={type}>
@@ -382,34 +389,33 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                     )}
                 </FormControl>
                 
-                {/* Third Line: Description */}
+                {/* Description */}
                 <TextField
                     fullWidth
                     label="Description (optional)"
                     name="description"
                     value={formData.description}
                     onChange={handleChange}
-                    sx={{ mb: 2 }}
-                    placeholder="Defaults to type if left empty"
+                    sx={{ mt: 2 }}
+                    placeholder={formData.type ? `Details about the ${formData.type.toLowerCase()}` : 'Details about the expense'}
                 />
                 
-                {/* Fourth Line: Paid By */}
+                {/* Paid By */}
                 <FormControl 
                     fullWidth 
-                    sx={{ mb: 2 }}
+                    sx={{ mt: 2 }}
                     error={!!errors.paidBy}
                 >
-                    <InputLabel id="paid-by-label">Paid By</InputLabel>
+                    <InputLabel>Paid By</InputLabel>
                     <Select
-                        labelId="paid-by-label"
                         name="paidBy"
                         value={formData.paidBy}
                         onChange={handleChange}
                         label="Paid By"
                     >
-                        {paidByOptions.map(option => (
-                            <MenuItem key={option} value={option}>
-                                {option}
+                        {paidByOptions.map(email => (
+                            <MenuItem key={email} value={email}>
+                                {getDisplayNameForEmail(email)}
                             </MenuItem>
                         ))}
                     </Select>
@@ -418,69 +424,70 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                     )}
                 </FormControl>
                 
-                {/* Fifth Line: Split Method */}
+                {/* Split Method */}
                 <FormControl 
                     fullWidth 
-                    sx={{ mb: 2 }}
+                    sx={{ mt: 2 }}
                     error={!!errors.splitMethod}
                 >
-                    <InputLabel id="split-method-label">How to Split</InputLabel>
+                    <InputLabel>Split Method</InputLabel>
                     <Select
-                        labelId="split-method-label"
                         name="splitMethod"
                         value={formData.splitMethod}
                         onChange={handleChange}
-                        label="How to Split"
+                        label="Split Method"
                     >
                         <MenuItem value="Don't split">Don't split</MenuItem>
                         <MenuItem value="Everyone">Everyone</MenuItem>
                         <MenuItem value="Individuals">Individuals</MenuItem>
                     </Select>
-                    {errors.splitMethod && (
-                        <FormHelperText>{errors.splitMethod}</FormHelperText>
-                    )}
                 </FormControl>
                 
-                {/* Individual Splits Selection */}
+                {/* Individual Split Options */}
                 {formData.splitMethod === 'Individuals' && (
-                    <Box sx={{ mb: 2 }}>
+                    <Box sx={{ mt: 2, ml: 2 }}>
                         <Typography variant="subtitle2" gutterBottom>
-                            Select individuals to split with:
+                            Split with:
                         </Typography>
+                        
                         <List dense>
-                            {paidByOptions.map((email) => (
-                                <ListItem key={email} dense>
-                                    <ListItemIcon>
+                            {paidByOptions.map(email => (
+                                <ListItem 
+                                    key={email} 
+                                    dense
+                                    sx={{ p: 0, my: 0.5 }}
+                                >
+                                    <ListItemIcon sx={{ minWidth: 36 }}>
                                         <Checkbox
                                             edge="start"
                                             checked={individualSplits.includes(email)}
                                             onChange={() => handleIndividualSplitChange(email)}
-                                            tabIndex={-1}
-                                            disableRipple
+                                            size="small"
                                         />
                                     </ListItemIcon>
-                                    <ListItemText primary={email} />
+                                    <ListItemText primary={getDisplayNameForEmail(email)} />
                                 </ListItem>
                             ))}
                         </List>
+                        
                         {errors.splitWith && (
                             <FormHelperText error>{errors.splitWith}</FormHelperText>
                         )}
                     </Box>
                 )}
                 
-                {/* Sixth Line: Additional Information Toggle */}
+                {/* Additional Information Toggle */}
                 <Box 
                     sx={{ 
-                        display: 'flex', 
-                        alignItems: 'center', 
-                        cursor: 'pointer',
-                        mb: 2
+                        mt: 2,
+                        display: 'flex',
+                        alignItems: 'center',
+                        cursor: 'pointer'
                     }}
                     onClick={toggleAdditionalInfo}
                 >
-                    <Typography color="primary">
-                        Additional information
+                    <Typography variant="subtitle1">
+                        Additional Information
                     </Typography>
                     <IconButton size="small">
                         {showAdditionalInfo ? <ExpandLessIcon /> : <ExpandMoreIcon />}
@@ -489,87 +496,125 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                 
                 {/* Additional Information Content */}
                 <Collapse in={showAdditionalInfo}>
-                    {/* Rating */}
-                    <Box sx={{ mb: 2 }}>
-                        <Typography component="legend">Rate this expense (optional)</Typography>
-                        <Rating
-                            name="rating"
-                            value={formData.rating}
-                            onChange={handleRatingChange}
-                        />
-                    </Box>
-                    
-                    {/* Consecutive Days */}
-                    <TextField
-                        fullWidth
-                        label="Consecutive Days"
-                        name="consecutiveDays"
-                        type="number"
-                        value={formData.consecutiveDays}
-                        onChange={handleChange}
-                        sx={{ mb: 2 }}
-                        error={!!errors.consecutiveDays}
-                        helperText={errors.consecutiveDays || "Number of consecutive days for this expense"}
-                        InputProps={{ inputProps: { min: 1 } }}
-                    />
-                    
-                    {/* Personal Summary */}
-                    <TextField
-                        fullWidth
-                        label="Personal Summary (optional)"
-                        name="personalSummary"
-                        value={formData.personalSummary}
-                        onChange={handleChange}
-                        multiline
-                        rows={3}
-                        sx={{ mb: 2 }}
-                    />
-                    
-                    {/* Photo Upload */}
-                    <Box sx={{ mb: 2 }}>
-                        <Typography gutterBottom>
-                            Upload a photo (optional)
-                        </Typography>
-                        
-                        <Button
-                            variant="outlined"
-                            component="label"
-                            startIcon={<PhotoCamera />}
-                        >
-                            Upload
-                            <input
-                                hidden
-                                accept="image/*"
-                                type="file"
-                                onChange={handlePhotoChange}
-                            />
-                        </Button>
-                        
-                        {photoPreview && (
-                            <Box sx={{ mt: 2, textAlign: 'center' }}>
-                                <img 
-                                    src={photoPreview} 
-                                    alt="Preview" 
-                                    style={{ 
-                                        maxWidth: '100%', 
-                                        maxHeight: '200px',
-                                        borderRadius: '4px'
-                                    }} 
-                                />
-                            </Box>
-                        )}
-                    </Box>
-                    
-                    {/* Expense Date */}
-                    <Box sx={{ mb: 2 }}>
+                    <Box sx={{ p: 1, mt: 1 }}>
+                        {/* Expense Date */}
                         <LocalizationProvider dateAdapter={AdapterDateFns}>
                             <DatePicker
                                 label="Expense Date"
                                 value={formData.expenseDate}
                                 onChange={handleDateChange}
-                                renderInput={(params) => <TextField {...params} fullWidth />}
+                                renderInput={(params) => 
+                                    <TextField 
+                                        {...params} 
+                                        fullWidth 
+                                        sx={{ mb: 2 }}
+                                    />
+                                }
                             />
                         </LocalizationProvider>
+                        
+                        {/* Rating */}
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                                Rating
+                            </Typography>
+                            <Rating
+                                name="rating"
+                                value={formData.rating}
+                                onChange={handleRatingChange}
+                                size="large"
+                            />
+                        </Box>
+                        
+                        {/* Consecutive Days */}
+                        <TextField
+                            fullWidth
+                            label="Consecutive Days"
+                            name="consecutiveDays"
+                            type="number"
+                            value={formData.consecutiveDays}
+                            onChange={handleChange}
+                            error={!!errors.consecutiveDays}
+                            helperText={errors.consecutiveDays}
+                            sx={{ mb: 2 }}
+                            InputProps={{ inputProps: { min: 1 } }}
+                        />
+                        
+                        {/* Personal Summary */}
+                        <TextField
+                            fullWidth
+                            label="Personal Summary"
+                            name="personalSummary"
+                            value={formData.personalSummary}
+                            onChange={handleChange}
+                            multiline
+                            rows={3}
+                            sx={{ mb: 2 }}
+                        />
+                        
+                        {/* Photo Upload */}
+                        <Box sx={{ mb: 2 }}>
+                            <Typography variant="subtitle2" gutterBottom>
+                                Photo
+                            </Typography>
+                            
+                            <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                                <label htmlFor="expense-photo">
+                                    <Input
+                                        id="expense-photo"
+                                        type="file"
+                                        inputProps={{
+                                            accept: 'image/*'
+                                        }}
+                                        onChange={handlePhotoChange}
+                                        sx={{ display: 'none' }}
+                                    />
+                                    <Button
+                                        variant="outlined"
+                                        component="span"
+                                        startIcon={<PhotoCamera />}
+                                    >
+                                        {photoPreview ? 'Change Photo' : 'Upload Photo'}
+                                    </Button>
+                                </label>
+                                
+                                {photoPreview && (
+                                    <IconButton 
+                                        color="error" 
+                                        onClick={() => {
+                                            setSelectedPhoto(null);
+                                            setPhotoPreview('');
+                                        }}
+                                        size="small"
+                                        sx={{ ml: 1 }}
+                                    >
+                                        <DeleteIcon />
+                                    </IconButton>
+                                )}
+                            </Box>
+                            
+                            {photoPreview && (
+                                <Box 
+                                    sx={{ 
+                                        mt: 2, 
+                                        textAlign: 'center',
+                                        border: '1px solid #eee',
+                                        borderRadius: 1,
+                                        p: 1
+                                    }}
+                                >
+                                    <img 
+                                        src={photoPreview} 
+                                        alt="Expense preview" 
+                                        style={{ 
+                                            maxWidth: '100%', 
+                                            maxHeight: '200px',
+                                            borderRadius: '4px'
+                                        }}
+                                    />
+                                </Box>
+                            )}
+                        </Box>
                     </Box>
                 </Collapse>
             </DialogContent>
@@ -584,11 +629,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                     color="primary"
                     disabled={isSubmitting}
                 >
-                    {isSubmitting ? (
-                        <CircularProgress size={24} />
-                    ) : (
-                        isEditMode ? 'Update' : 'Save'
-                    )}
+                    {isSubmitting ? <CircularProgress size={24} /> : 'Save'}
                 </Button>
             </DialogActions>
         </Dialog>

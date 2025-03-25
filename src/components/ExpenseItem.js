@@ -20,6 +20,7 @@ import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
 import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { useExpense } from '../contexts/ExpenseContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useTrip } from '../contexts/TripContext';
 
 export default function ExpenseItem({ expense, onEdit }) {
     const [isDeleting, setIsDeleting] = useState(false);
@@ -29,9 +30,11 @@ export default function ExpenseItem({ expense, onEdit }) {
     const [showPhoto, setShowPhoto] = useState(false);
     const [formattedAmount, setFormattedAmount] = useState('');
     const [isLoadingAmount, setIsLoadingAmount] = useState(true);
+    const [paidByUser, setPaidByUser] = useState(null);
     
     const { deleteExpense } = useExpense();
     const { homeCurrency, formatWithConversion, formatCurrency } = useCurrency();
+    const { getTripDetails } = useTrip();
 
     // Format the expense amount with currency conversion
     useEffect(() => {
@@ -54,6 +57,32 @@ export default function ExpenseItem({ expense, onEdit }) {
         
         formatAmount();
     }, [expense.amount, expense.currency, homeCurrency, formatWithConversion, formatCurrency]);
+
+    // Get display name for paid by user
+    useEffect(() => {
+        async function fetchPaidByUser() {
+            try {
+                if (!expense.paidBy) return;
+                
+                // Get trip details which includes tripmates
+                const tripDetails = await getTripDetails(expense.tripId);
+                if (!tripDetails || !tripDetails.tripmates) return;
+                
+                // Find the tripmate with matching email
+                const tripmate = tripDetails.tripmates.find(tm => tm.email === expense.paidBy);
+                if (tripmate) {
+                    setPaidByUser(tripmate.displayName || tripmate.email);
+                } else {
+                    setPaidByUser(expense.paidBy);
+                }
+            } catch (error) {
+                console.error('Error fetching paid by user:', error);
+                setPaidByUser(expense.paidBy);
+            }
+        }
+        
+        fetchPaidByUser();
+    }, [expense.paidBy, expense.tripId, getTripDetails]);
 
     // Format the expense date
     const formatDate = (dateString) => {
@@ -162,7 +191,7 @@ export default function ExpenseItem({ expense, onEdit }) {
                 {/* Third Line: Paid By and Split Method */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="body2" color="text.secondary">
-                        Paid by: {expense.paidBy}
+                        Paid by: {paidByUser || 'Loading...'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         Split: {expense.splitMethod}
@@ -217,9 +246,11 @@ export default function ExpenseItem({ expense, onEdit }) {
                             </IconButton>
                         </Box>
                         <Collapse in={showSummary}>
-                            <Typography variant="body2" sx={{ mt: 1, px: 1 }}>
-                                {expense.personalSummary}
-                            </Typography>
+                            <Box sx={{ mt: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1 }}>
+                                <Typography variant="body2">
+                                    {expense.personalSummary}
+                                </Typography>
+                            </Box>
                         </Collapse>
                     </Box>
                 )}
@@ -243,34 +274,44 @@ export default function ExpenseItem({ expense, onEdit }) {
                             </IconButton>
                         </Box>
                         <Collapse in={showPhoto}>
-                            <Box sx={{ mt: 1, textAlign: 'center' }}>
-                                <img 
+                            <Box 
+                                sx={{ 
+                                    mt: 1, 
+                                    p: 1, 
+                                    bgcolor: 'background.paper', 
+                                    borderRadius: 1,
+                                    display: 'flex',
+                                    justifyContent: 'center'
+                                }}
+                            >
+                                <Box 
+                                    component="img" 
                                     src={expense.photoURL} 
-                                    alt="Expense" 
-                                    style={{ 
+                                    alt={expense.description}
+                                    sx={{ 
                                         maxWidth: '100%', 
-                                        maxHeight: '200px',
-                                        borderRadius: '4px'
-                                    }} 
+                                        maxHeight: 200,
+                                        borderRadius: 1
+                                    }}
                                 />
                             </Box>
                         </Collapse>
                     </Box>
                 )}
                 
-                {/* Delete Button */}
-                <Box sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                {/* Delete button (hidden until required) */}
+                <Box sx={{ display: 'none' }}>
                     <IconButton 
-                        size="small" 
-                        color="error" 
+                        color="error"
                         onClick={handleOpenConfirmDialog}
+                        disabled={isDeleting}
                     >
                         <DeleteIcon />
                     </IconButton>
                 </Box>
             </Paper>
-            
-            {/* Confirm Delete Dialog */}
+
+            {/* Confirmation Dialog */}
             <Dialog
                 open={openConfirmDialog}
                 onClose={handleCloseConfirmDialog}
@@ -282,15 +323,11 @@ export default function ExpenseItem({ expense, onEdit }) {
                     </DialogContentText>
                 </DialogContent>
                 <DialogActions>
-                    <Button onClick={handleCloseConfirmDialog} disabled={isDeleting}>
+                    <Button onClick={handleCloseConfirmDialog} color="primary">
                         Cancel
                     </Button>
-                    <Button 
-                        onClick={handleDelete} 
-                        color="error" 
-                        disabled={isDeleting}
-                    >
-                        {isDeleting ? <CircularProgress size={24} /> : 'Delete'}
+                    <Button onClick={handleDelete} color="error" disabled={isDeleting}>
+                        {isDeleting ? 'Deleting...' : 'Delete'}
                     </Button>
                 </DialogActions>
             </Dialog>

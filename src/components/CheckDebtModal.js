@@ -10,7 +10,7 @@
  * Implemented in Phase 7 to enable debt tracking and settlement.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Dialog, 
     DialogTitle, 
@@ -34,6 +34,8 @@ import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useDebt } from '../contexts/DebtContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useCurrency } from '../contexts/CurrencyContext';
+import { useTrip } from '../contexts/TripContext';
+import { useParams } from 'react-router-dom';
 
 // Tab panel component for switching between active debts and history
 function TabPanel(props) {
@@ -61,8 +63,29 @@ export default function CheckDebtModal({ open, onClose }) {
     const { calculatedDebts, debtHistory, userBalances, settleUpDebts, loading } = useDebt();
     const { currentUser } = useAuth();
     const { formatCurrency, homeCurrency } = useCurrency();
+    const { getTripDetails } = useTrip();
+    const { tripId } = useParams();
     const [isSettling, setIsSettling] = useState(false);
+    const [tripmates, setTripmates] = useState([]);
     const theme = useTheme();
+
+    // Fetch tripmates with their display names
+    useEffect(() => {
+        async function fetchTripmates() {
+            if (!tripId) return;
+            
+            try {
+                const tripDetails = await getTripDetails(tripId);
+                if (tripDetails?.tripmates) {
+                    setTripmates(tripDetails.tripmates);
+                }
+            } catch (error) {
+                console.error('Error fetching tripmates:', error);
+            }
+        }
+        
+        fetchTripmates();
+    }, [tripId, getTripDetails]);
 
     const handleTabChange = (event, newValue) => {
         setTabValue(newValue);
@@ -90,14 +113,20 @@ export default function CheckDebtModal({ open, onClose }) {
     const userDebts = calculatedDebts.filter(isUserInvolved);
     const userDebtHistory = debtHistory.filter(isUserInvolved);
 
+    // Find display name for a user ID or email
+    const getDisplayName = (userId, email) => {
+        const tripmate = tripmates.find(tm => tm.uid === userId || tm.email === email);
+        return tripmate ? tripmate.displayName : email || 'Unknown user';
+    };
+
     // Function to format the debt description based on user perspective
     const getDebtDescription = (debt) => {
         const amount = formatCurrency(debt.amount, homeCurrency);
         
         if (debt.fromUser === currentUser.uid) {
-            return `You owe ${debt.toUserEmail}: ${amount}`;
+            return `You owe ${getDisplayName(debt.toUser, debt.toUserEmail)}: ${amount}`;
         } else {
-            return `${debt.fromUserEmail} owes you: ${amount}`;
+            return `${getDisplayName(debt.fromUser, debt.fromUserEmail)} owes you: ${amount}`;
         }
     };
 
@@ -200,16 +229,17 @@ export default function CheckDebtModal({ open, onClose }) {
                         <TabPanel value={tabValue} index={1}>
                             {userDebtHistory.length > 0 ? (
                                 <List>
-                                    {userDebtHistory.map((debt) => (
-                                        <React.Fragment key={debt.id}>
+                                    {userDebtHistory.map((debt, index) => (
+                                        <React.Fragment key={index}>
                                             <ListItem>
                                                 <ListItemText
                                                     primary={getDebtDescription(debt)}
                                                     secondary={
                                                         <>
                                                             {debt.description}
-                                                            <Typography variant="caption" display="block">
-                                                                Settled on: {debt.settledAt?.toDate?.().toLocaleDateString() || 'Unknown date'}
+                                                            <br />
+                                                            <Typography variant="caption" color="text.secondary">
+                                                                Settled: {new Date(debt.settledAt).toLocaleString()}
                                                             </Typography>
                                                         </>
                                                     }
@@ -221,7 +251,7 @@ export default function CheckDebtModal({ open, onClose }) {
                                 </List>
                             ) : (
                                 <Alert severity="info">
-                                    No debt history available.
+                                    No debt settlement history yet.
                                 </Alert>
                             )}
                         </TabPanel>
@@ -230,21 +260,18 @@ export default function CheckDebtModal({ open, onClose }) {
             </DialogContent>
             
             <DialogActions>
+                <Button 
+                    onClick={handleSettleUp} 
+                    variant="contained" 
+                    color="primary"
+                    disabled={isSettling || loading || userDebts.length === 0}
+                    sx={{ mr: 1 }}
+                >
+                    {isSettling ? <CircularProgress size={24} /> : 'Settle Up'}
+                </Button>
                 <Button onClick={onClose}>
                     Close
                 </Button>
-                
-                {tabValue === 0 && userDebts.length > 0 && (
-                    <Button 
-                        onClick={handleSettleUp} 
-                        variant="contained" 
-                        color="primary"
-                        disabled={isSettling}
-                        startIcon={isSettling ? <CircularProgress size={20} /> : null}
-                    >
-                        {isSettling ? 'Settling...' : 'Settle Up'}
-                    </Button>
-                )}
             </DialogActions>
         </Dialog>
     );

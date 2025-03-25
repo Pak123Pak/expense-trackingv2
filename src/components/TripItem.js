@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Paper, 
     Typography, 
@@ -11,18 +11,41 @@ import {
     DialogContentText,
     DialogActions,
     Button,
-    Chip
+    Chip,
+    Collapse
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
+import KeyboardArrowRightIcon from '@mui/icons-material/KeyboardArrowRight';
+import KeyboardArrowDownIcon from '@mui/icons-material/KeyboardArrowDown';
 import { useTrip } from '../contexts/TripContext';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '../contexts/AuthContext';
 
 export default function TripItem({ trip }) {
     const [isDeleting, setIsDeleting] = useState(false);
     const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
-    const { deleteTrip } = useTrip();
+    const [showMembers, setShowMembers] = useState(false);
+    const [tripmates, setTripmates] = useState([]);
+    const { deleteTrip, getTripDetails } = useTrip();
+    const { currentUser } = useAuth();
     const navigate = useNavigate();
+
+    // Fetch trip members on initial render
+    useEffect(() => {
+        async function fetchTripmates() {
+            try {
+                const tripDetails = await getTripDetails(trip.id);
+                if (tripDetails?.tripmates) {
+                    setTripmates(tripDetails.tripmates);
+                }
+            } catch (error) {
+                console.error('Error fetching trip members:', error);
+            }
+        }
+        
+        fetchTripmates();
+    }, [trip.id, getTripDetails]);
 
     // Format the creation date
     const formattedDate = trip.createdAt instanceof Date 
@@ -54,6 +77,11 @@ export default function TripItem({ trip }) {
             setIsDeleting(false);
         }
     };
+    
+    const toggleMembers = (e) => {
+        e.stopPropagation(); // Prevent the click from bubbling up to the parent
+        setShowMembers(!showMembers);
+    };
 
     // Check if this is a shared trip where the user is not the creator
     const isSharedTrip = !trip.isCreator;
@@ -67,7 +95,7 @@ export default function TripItem({ trip }) {
                     mb: 2,
                     display: 'flex',
                     justifyContent: 'space-between',
-                    alignItems: 'center',
+                    alignItems: 'flex-start',
                     cursor: 'pointer',
                     '&:hover': {
                         backgroundColor: 'rgba(0, 0, 0, 0.03)'
@@ -75,7 +103,7 @@ export default function TripItem({ trip }) {
                 }}
                 onClick={handleOpenTrip}
             >
-                <Box>
+                <Box sx={{ width: '100%' }}>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
                         <Typography variant="h6" component="div" sx={{ fontWeight: 'medium' }}>
                             {trip.name}
@@ -93,7 +121,43 @@ export default function TripItem({ trip }) {
                     <Typography variant="body2" color="text.secondary">
                         Created: {formattedDate}
                     </Typography>
+                    
+                    {/* Trip Members */}
+                    {tripmates.length > 0 && (
+                        <Box sx={{ mt: 1 }}>
+                            <Box 
+                                sx={{ 
+                                    display: 'flex', 
+                                    alignItems: 'center', 
+                                    cursor: 'pointer'
+                                }}
+                                onClick={toggleMembers}
+                            >
+                                <Typography variant="body2" color="text.secondary" sx={{ display: 'flex', alignItems: 'center' }}>
+                                    Trip Members:
+                                    <IconButton size="small" onClick={toggleMembers}>
+                                        {showMembers ? <KeyboardArrowDownIcon /> : <KeyboardArrowRightIcon />}
+                                    </IconButton>
+                                </Typography>
+                            </Box>
+                            
+                            <Collapse in={showMembers}>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5, mt: 0.5 }}>
+                                    {tripmates.map(tripmate => (
+                                        <Chip 
+                                            key={tripmate.uid} 
+                                            label={tripmate.displayName || tripmate.email.split('@')[0]} 
+                                            size="small"
+                                            variant={tripmate.uid === currentUser?.uid ? "filled" : "outlined"}
+                                            color={tripmate.uid === currentUser?.uid ? "primary" : "default"}
+                                        />
+                                    ))}
+                                </Box>
+                            </Collapse>
+                        </Box>
+                    )}
                 </Box>
+                
                 <Box sx={{ position: 'relative' }}>
                     {/* Only show delete button for trips the user created */}
                     {!isSharedTrip && (
