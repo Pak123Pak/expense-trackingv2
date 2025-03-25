@@ -95,9 +95,9 @@ export default function CheckDebtModal({ open, onClose }) {
         const amount = formatCurrency(debt.amount, homeCurrency);
         
         if (debt.fromUser === currentUser.uid) {
-            return `You owe ${debt.toUserEmail}: ${amount}`;
+            return `You owe ${debt.toUserDisplayName || debt.toUserEmail}: ${amount}`;
         } else {
-            return `${debt.fromUserEmail} owes you: ${amount}`;
+            return `${debt.fromUserDisplayName || debt.fromUserEmail} owes you: ${amount}`;
         }
     };
 

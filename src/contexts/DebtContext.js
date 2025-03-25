@@ -189,8 +189,10 @@ export function DebtProvider({ children, tripId }) {
                             debtItems.push({
                                 fromUser: userId,
                                 fromUserEmail: usersData[userId]?.email,
+                                fromUserDisplayName: usersData[userId]?.displayName,
                                 toUser: paidByUserId,
                                 toUserEmail: paidByEmail,
+                                toUserDisplayName: usersData[paidByUserId]?.displayName,
                                 amount: perPersonAmount,
                                 currency: homeCurrency,
                                 description: `Split from ${expense.description}`,
@@ -249,8 +251,10 @@ export function DebtProvider({ children, tripId }) {
                                 debtItems.push({
                                     fromUser: userId,
                                     fromUserEmail: usersData[userId]?.email,
+                                    fromUserDisplayName: usersData[userId]?.displayName,
                                     toUser: paidByUserId,
                                     toUserEmail: paidByEmail,
+                                    toUserDisplayName: usersData[paidByUserId]?.displayName,
                                     amount: perPersonAmount,
                                     currency: homeCurrency,
                                     description: `Split from ${expense.description}`,

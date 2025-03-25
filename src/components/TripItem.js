@@ -11,17 +11,22 @@ import {
     DialogContentText,
     DialogActions,
     Button,
-    Chip
+    Chip,
+    Avatar,
+    AvatarGroup,
+    Tooltip
 } from '@mui/material';
 import DeleteIcon from '@mui/icons-material/Delete';
 import PeopleIcon from '@mui/icons-material/People';
 import { useTrip } from '../contexts/TripContext';
+import { useAuth } from '../contexts/AuthContext';
 import { useNavigate } from 'react-router-dom';
 
 export default function TripItem({ trip }) {
     const [isDeleting, setIsDeleting] = useState(false);
     const [openConfirmDialog, setOpenConfirmDialog] = useState(false);
     const { deleteTrip } = useTrip();
+    const { currentUser } = useAuth();
     const navigate = useNavigate();
 
     // Format the creation date
@@ -57,6 +62,15 @@ export default function TripItem({ trip }) {
 
     // Check if this is a shared trip where the user is not the creator
     const isSharedTrip = !trip.isCreator;
+    
+    // Get trip members count
+    const tripmatesCount = trip.tripmates?.length || 1;
+    
+    // Function to get initials from display name
+    const getInitials = (name) => {
+        if (!name) return '?';
+        return name.split(' ').map(n => n[0]).join('').toUpperCase();
+    };
 
     return (
         <>
@@ -80,20 +94,37 @@ export default function TripItem({ trip }) {
                         <Typography variant="h6" component="div" sx={{ fontWeight: 'medium' }}>
                             {trip.name}
                         </Typography>
-                        {isSharedTrip && (
-                            <Chip
-                                icon={<PeopleIcon />}
-                                label="Shared"
-                                size="small"
-                                color="primary"
-                                variant="outlined"
-                            />
-                        )}
                     </Box>
                     <Typography variant="body2" color="text.secondary">
                         Created: {formattedDate}
                     </Typography>
+                    
+                    {tripmatesCount > 1 && (
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                            <PeopleIcon fontSize="small" sx={{ mr: 0.5, color: 'text.secondary' }} />
+                            <Typography variant="body2" color="text.secondary">
+                                Trip members: 
+                            </Typography>
+                            <AvatarGroup max={3} sx={{ ml: 1 }}>
+                                {trip.tripmates?.map((tripmate, index) => (
+                                    <Tooltip key={tripmate.uid} title={tripmate.displayName || tripmate.email}>
+                                        <Avatar 
+                                            sx={{ 
+                                                width: 24, 
+                                                height: 24, 
+                                                fontSize: '0.75rem',
+                                                bgcolor: tripmate.uid === currentUser.uid ? 'primary.main' : 'default'
+                                            }}
+                                        >
+                                            {getInitials(tripmate.displayName)}
+                                        </Avatar>
+                                    </Tooltip>
+                                ))}
+                            </AvatarGroup>
+                        </Box>
+                    )}
                 </Box>
+                
                 <Box sx={{ position: 'relative' }}>
                     {/* Only show delete button for trips the user created */}
                     {!isSharedTrip && (

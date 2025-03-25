@@ -162,7 +162,7 @@ export default function ExpenseItem({ expense, onEdit }) {
                 {/* Third Line: Paid By and Split Method */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="body2" color="text.secondary">
-                        Paid by: {expense.paidBy}
+                        Paid by: {expense.paidByDisplayName || expense.paidBy}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
                         Split: {expense.splitMethod}
