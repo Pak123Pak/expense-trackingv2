@@ -327,22 +327,48 @@ export default function AddExpenseModal({ open, onClose, paidByOptions = [], exp
                             fullWidth 
                             error={!!errors.currency}
                         >
-                            <InputLabel>Currency</InputLabel>
-                            <Select
-                                name="currency"
-                                value={formData.currency}
-                                onChange={handleChange}
-                                label="Currency"
-                            >
-                                {Object.keys(availableCurrencies).map(code => (
-                                    <MenuItem key={code} value={code}>
-                                        {code.toUpperCase()} - {availableCurrencies[code]}
-                                    </MenuItem>
-                                ))}
-                            </Select>
-                            {errors.currency && (
-                                <FormHelperText>{errors.currency}</FormHelperText>
-                            )}
+                        <Autocomplete
+                            id="currency-autocomplete"
+                            options={Object.keys(availableCurrencies).sort((a, b) => {
+                                // Show home currency first
+                                if (a.toLowerCase() === homeCurrency) return -1;
+                                if (b.toLowerCase() === homeCurrency) return 1;
+                                return a.localeCompare(b);
+                            })}
+                            getOptionLabel={(option) => 
+                                `${option.toUpperCase()} - ${availableCurrencies[option] || ''}`
+                            }
+                            value={formData.currency ? formData.currency.toUpperCase() : null}
+                            onChange={(event, newValue) => {
+                                if (newValue) {
+                                    setFormData({
+                                        ...formData,
+                                        currency: newValue.toLowerCase()
+                                    });
+                                    
+                                    // Clear any currency errors
+                                    if (errors.currency) {
+                                        setErrors({...errors, currency: ''});
+                                    }
+                                }
+                            }}
+                            renderInput={(params) => 
+                                <TextField 
+                                    {...params} 
+                                    label="Currency" 
+                                    error={!!errors.currency}
+                                    helperText={errors.currency}
+                                />
+                            }
+                            filterOptions={(options, { inputValue }) => {
+                                const filter = inputValue.toLowerCase();
+                                return options.filter(option => 
+                                    option.toLowerCase().includes(filter) || 
+                                    availableCurrencies[option]?.toLowerCase().includes(filter)
+                                );
+                            }}
+                            sx={{ width: 200 }}
+                        />
                         </FormControl>
                     </Grid>
                     <Grid item xs={7}>
