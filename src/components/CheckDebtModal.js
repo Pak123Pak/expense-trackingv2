@@ -94,9 +94,11 @@ export default function CheckDebtModal({ open, onClose }) {
     const handleSettleUp = async () => {
         setIsSettling(true);
         try {
-            await settleUpDebts();
-            // After settling up, switch to history tab
-            setTabValue(1);
+            const success = await settleUpDebts();
+            if (success) {
+                // After settling up, switch to history tab
+                setTabValue(1);
+            }
         } catch (error) {
             console.error('Error settling debts:', error);
         } finally {
@@ -206,8 +208,8 @@ export default function CheckDebtModal({ open, onClose }) {
                         <TabPanel value={tabValue} index={0}>
                             {userDebts.length > 0 ? (
                                 <List>
-                                    {userDebts.map((debt) => (
-                                        <React.Fragment key={debt.fromUser + debt.toUser}>
+                                    {userDebts.map((debt, index) => (
+                                        <React.Fragment key={`${debt.fromUser}-${debt.toUser}-${debt.expenseId || index}`}>
                                             <ListItem>
                                                 <ListItemText
                                                     primary={getDebtDescription(debt)}
@@ -230,7 +232,7 @@ export default function CheckDebtModal({ open, onClose }) {
                             {userDebtHistory.length > 0 ? (
                                 <List>
                                     {userDebtHistory.map((debt, index) => (
-                                        <React.Fragment key={index}>
+                                        <React.Fragment key={`hist-${debt.fromUser}-${debt.toUser}-${debt.expenseId || index}`}>
                                             <ListItem>
                                                 <ListItemText
                                                     primary={getDebtDescription(debt)}

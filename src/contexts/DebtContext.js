@@ -39,11 +39,12 @@ export function DebtProvider({ children, tripId }) {
     const [loading, setLoading] = useState(true);
     const [calculatedDebts, setCalculatedDebts] = useState([]);
     const [userBalances, setUserBalances] = useState({});
+    const [refreshTrigger, setRefreshTrigger] = useState(0);
     const { currentUser } = useAuth();
     const { expenses } = useExpense();
     const { convert, homeCurrency } = useCurrency();
 
-    // Fetch debts whenever the tripId changes
+    // Fetch debts whenever the tripId changes or refresh is triggered
     useEffect(() => {
         async function fetchDebts() {
             if (!currentUser || !tripId) {
@@ -95,7 +96,7 @@ export function DebtProvider({ children, tripId }) {
         }
 
         fetchDebts();
-    }, [currentUser, tripId]);
+    }, [currentUser, tripId, refreshTrigger]);
 
     // Calculate debts based on expenses
     useEffect(() => {
@@ -124,12 +125,42 @@ export function DebtProvider({ children, tripId }) {
                         };
                     }
                 }
+
+                // Get all settled debts to avoid recalculating them
+                const settledDebtsQuery = query(
+                    collection(db, 'trips', tripId, 'debts'),
+                    where('settled', '==', true)
+                );
+                const settledSnapshot = await getDocs(settledDebtsQuery);
+                const settledDebts = settledSnapshot.docs.map(doc => ({
+                    id: doc.id,
+                    ...doc.data()
+                }));
+                
+                // Create a map of settled expense IDs to avoid recalculating
+                const settledExpenseIds = new Set(
+                    settledDebts.map(debt => debt.expenseId)
+                );
                 
                 // Calculate debts for each expense
                 const debtItems = [];
                 const userBalanceMap = {};
                 
+                // Initialize balance for all users
+                for (const userId of tripmates) {
+                    userBalanceMap[userId] = {
+                        paid: 0,
+                        owed: 0,
+                        balance: 0
+                    };
+                }
+                
                 for (const expense of expenses) {
+                    // Skip expenses that have already been settled
+                    if (settledExpenseIds.has(expense.id)) {
+                        continue;
+                    }
+                    
                     const paidByEmail = expense.paidBy;
                     const amount = expense.amount;
                     const currency = expense.currency;
@@ -140,15 +171,6 @@ export function DebtProvider({ children, tripId }) {
                     )?.[0];
                     
                     if (!paidByUserId) continue;
-                    
-                    // Initialize balance for paidBy user if not exists
-                    if (!userBalanceMap[paidByUserId]) {
-                        userBalanceMap[paidByUserId] = {
-                            paid: 0,
-                            owed: 0,
-                            balance: 0
-                        };
-                    }
                     
                     // Convert amount to home currency
                     const convertedAmount = await convert(amount, currency, homeCurrency);
@@ -173,15 +195,6 @@ export function DebtProvider({ children, tripId }) {
                         // Create debt items
                         for (const userId of tripmates) {
                             if (userId === paidByUserId) continue;
-                            
-                            // Initialize balance for user if not exists
-                            if (!userBalanceMap[userId]) {
-                                userBalanceMap[userId] = {
-                                    paid: 0,
-                                    owed: 0,
-                                    balance: 0
-                                };
-                            }
                             
                             userBalanceMap[userId].owed += perPersonAmount;
                             userBalanceMap[userId].balance -= perPersonAmount;
@@ -228,15 +241,6 @@ export function DebtProvider({ children, tripId }) {
                         
                         // Calculate debts for each person in the split
                         for (const userId of splitWithUserIds) {
-                            // Initialize balance for user if not exists
-                            if (!userBalanceMap[userId]) {
-                                userBalanceMap[userId] = {
-                                    paid: 0,
-                                    owed: 0,
-                                    balance: 0
-                                };
-                            }
-                            
                             userBalanceMap[userId].owed += perPersonAmount;
                             
                             // If this is the payer, they don't owe themselves, just adjust their balance
@@ -262,26 +266,7 @@ export function DebtProvider({ children, tripId }) {
                     }
                 }
                 
-                // Simplify debts (combine debts between the same users)
-                const simplifiedDebts = {};
-                for (const debt of debtItems) {
-                    const key = `${debt.fromUser}_${debt.toUser}`;
-                    if (!simplifiedDebts[key]) {
-                        simplifiedDebts[key] = {
-                            ...debt,
-                            amount: debt.amount
-                        };
-                    } else {
-                        simplifiedDebts[key].amount += debt.amount;
-                        simplifiedDebts[key].description = 'Combined expenses split';
-                    }
-                }
-                
-                // Convert to array and filter out zero amounts
-                const finalDebts = Object.values(simplifiedDebts)
-                    .filter(debt => Math.abs(debt.amount) > 0.01); // Filter out very small amounts
-                
-                setCalculatedDebts(finalDebts);
+                setCalculatedDebts(debtItems);
                 setUserBalances(userBalanceMap);
             } catch (error) {
                 console.error('Error calculating debts:', error);
@@ -289,7 +274,7 @@ export function DebtProvider({ children, tripId }) {
         }
         
         calculateDebts();
-    }, [expenses, tripId, homeCurrency, convert]);
+    }, [expenses, tripId, homeCurrency, convert, refreshTrigger]);
 
     // Settle up all debts
     async function settleUpDebts() {
@@ -323,6 +308,20 @@ export function DebtProvider({ children, tripId }) {
             
             setDebtHistory(prev => [...settledDebts, ...prev]);
             setCalculatedDebts([]);
+            
+            // Reset user balances to zero after settlement
+            const resetBalances = {...userBalances};
+            Object.keys(resetBalances).forEach(userId => {
+                resetBalances[userId] = {
+                    paid: 0,
+                    owed: 0,
+                    balance: 0
+                };
+            });
+            setUserBalances(resetBalances);
+            
+            // Trigger a refresh to update the UI with the latest data
+            setRefreshTrigger(prev => prev + 1);
             
             return true;
         } catch (error) {
