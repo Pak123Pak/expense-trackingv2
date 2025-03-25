@@ -15,7 +15,9 @@ import {
     InputLabel,
     Select,
     CircularProgress,
-    Badge
+    Badge,
+    Autocomplete,
+    TextField
 } from '@mui/material';
 import SettingsIcon from '@mui/icons-material/Settings';
 import NotificationsIcon from '@mui/icons-material/Notifications';
@@ -156,19 +158,25 @@ export default function SettingsMenu() {
                     </Typography>
                     
                     <FormControl fullWidth margin="normal">
-                        <InputLabel>Home Currency</InputLabel>
-                        <Select
-                            value={selectedCurrency}
-                            onChange={handleCurrencyChange}
-                            label="Home Currency"
+                        <Autocomplete
+                            value={selectedCurrency ? selectedCurrency.toUpperCase() : null}
+                            onChange={(event, newValue) => {
+                                if (newValue) {
+                                    setSelectedCurrency(newValue.toLowerCase());
+                                }
+                            }}
                             disabled={saving}
-                        >
-                            {Object.entries(availableCurrencies).map(([code, name]) => (
-                                <MenuItem key={code} value={code.toLowerCase()}>
-                                    {code.toUpperCase()} - {name}
-                                </MenuItem>
-                            ))}
-                        </Select>
+                            options={Object.keys(availableCurrencies)}
+                            getOptionLabel={(option) => `${option.toUpperCase()} - ${availableCurrencies[option] || ''}`}
+                            renderInput={(params) => <TextField {...params} label="Home Currency" />}
+                            filterOptions={(options, { inputValue }) => {
+                                const filter = inputValue.toLowerCase();
+                                return options.filter(option => 
+                                    option.toLowerCase().includes(filter) || 
+                                    availableCurrencies[option]?.toLowerCase().includes(filter)
+                                );
+                            }}
+                        />
                     </FormControl>
                 </DialogContent>
                 <DialogActions>

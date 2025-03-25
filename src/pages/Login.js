@@ -32,6 +32,7 @@ export default function Login() {
     
     // If user is already logged in, redirect to trips page
     useEffect(() => {
+        console.log("Version 2");
         if (currentUser) {
             navigate('/trips');
         }

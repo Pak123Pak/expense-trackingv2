@@ -25,7 +25,8 @@ import {
     List,
     ListItem,
     ListItemText,
-    ListItemIcon
+    ListItemIcon,
+    Autocomplete
 } from '@mui/material';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
@@ -289,48 +290,56 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
             
             <DialogContent>
                 {/* First Line: Currency and Amount */}
-                <Box sx={{ display: 'flex', mb: 2, mt: 1 }}>
+                <Box sx={{ display: 'flex', mb: 2, mt: 1, flexWrap: 'nowrap', gap: 2 }}>
                     <FormControl 
-                        sx={{ minWidth: 150, mr: 2 }}
+                        sx={{ width: '40%' }}
                         error={!!errors.currency}
                     >
-                        <InputLabel id="currency-label">Currency</InputLabel>
-                        <Select
-                            labelId="currency-label"
-                            name="currency"
-                            value={formData.currency}
-                            onChange={handleChange}
-                            label="Currency"
-                        >
-                            {Object.keys(availableCurrencies).length > 0 ? (
-                                Object.entries(availableCurrencies)
-                                    .sort(([codeA], [codeB]) => {
-                                        // Show home currency first
-                                        if (codeA.toLowerCase() === homeCurrency) return -1;
-                                        if (codeB.toLowerCase() === homeCurrency) return 1;
-                                        return codeA.localeCompare(codeB);
-                                    })
-                                    .map(([code, name]) => (
-                                        <MenuItem key={code} value={code.toLowerCase()}>
-                                            {code.toUpperCase()} - {name}
-                                        </MenuItem>
-                                    ))
-                            ) : (
-                                // Fallback to predefined list if API fails
-                                ['hkd', 'usd', 'eur', 'gbp', 'jpy', 'cny', 'aud', 'cad', 'krw'].map(currency => (
-                                    <MenuItem key={currency} value={currency}>
-                                        {currency.toUpperCase()}
-                                    </MenuItem>
-                                ))
-                            )}
-                        </Select>
-                        {errors.currency && (
-                            <FormHelperText>{errors.currency}</FormHelperText>
-                        )}
+                        <Autocomplete
+                            id="currency-autocomplete"
+                            options={Object.keys(availableCurrencies).sort((a, b) => {
+                                // Show home currency first
+                                if (a.toLowerCase() === homeCurrency) return -1;
+                                if (b.toLowerCase() === homeCurrency) return 1;
+                                return a.localeCompare(b);
+                            })}
+                            getOptionLabel={(option) => 
+                                `${option.toUpperCase()} - ${availableCurrencies[option] || ''}`
+                            }
+                            value={formData.currency ? formData.currency.toUpperCase() : null}
+                            onChange={(event, newValue) => {
+                                if (newValue) {
+                                    setFormData({
+                                        ...formData,
+                                        currency: newValue.toLowerCase()
+                                    });
+                                    
+                                    // Clear any currency errors
+                                    if (errors.currency) {
+                                        setErrors({...errors, currency: ''});
+                                    }
+                                }
+                            }}
+                            renderInput={(params) => 
+                                <TextField 
+                                    {...params} 
+                                    label="Currency" 
+                                    error={!!errors.currency}
+                                    helperText={errors.currency}
+                                />
+                            }
+                            filterOptions={(options, { inputValue }) => {
+                                const filter = inputValue.toLowerCase();
+                                return options.filter(option => 
+                                    option.toLowerCase().includes(filter) || 
+                                    availableCurrencies[option]?.toLowerCase().includes(filter)
+                                );
+                            }}
+                        />
                     </FormControl>
                     
                     <TextField
-                        fullWidth
+                        sx={{ width: '60%' }}
                         label="Amount"
                         name="amount"
                         type="number"
