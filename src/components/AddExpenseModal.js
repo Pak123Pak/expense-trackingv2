@@ -327,35 +327,22 @@ export default function AddExpenseModal({ open, onClose, paidByOptions = [], exp
                             fullWidth 
                             error={!!errors.currency}
                         >
-                            <Autocomplete
-                                value={formData.currency ? formData.currency.toUpperCase() : null}
-                                onChange={(event, newValue) => {
-                                    if (newValue) {
-                                        setFormData(prev => ({
-                                            ...prev,
-                                            currency: newValue.toLowerCase()
-                                        }));
-                                    }
-                                }}
-                                disabled={isSubmitting}
-                                options={Object.keys(availableCurrencies)}
-                                getOptionLabel={(option) => `${option.toUpperCase()} - ${availableCurrencies[option] || ''}`}
-                                renderInput={(params) => (
-                                    <TextField 
-                                        {...params} 
-                                        label="Currency" 
-                                        error={!!errors.currency}
-                                        helperText={errors.currency}
-                                    />
-                                )}
-                                filterOptions={(options, { inputValue }) => {
-                                    const filter = inputValue.toLowerCase();
-                                    return options.filter(option => 
-                                        option.toLowerCase().includes(filter) || 
-                                        availableCurrencies[option]?.toLowerCase().includes(filter)
-                                    );
-                                }}
-                            />
+                            <InputLabel>Currency</InputLabel>
+                            <Select
+                                name="currency"
+                                value={formData.currency}
+                                onChange={handleChange}
+                                label="Currency"
+                            >
+                                {Object.keys(availableCurrencies).map(code => (
+                                    <MenuItem key={code} value={code}>
+                                        {code.toUpperCase()} - {availableCurrencies[code]}
+                                    </MenuItem>
+                                ))}
+                            </Select>
+                            {errors.currency && (
+                                <FormHelperText>{errors.currency}</FormHelperText>
+                            )}
                         </FormControl>
                     </Grid>
                     <Grid item xs={7}>

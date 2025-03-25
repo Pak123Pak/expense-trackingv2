@@ -18,10 +18,6 @@ Visit the application at: [https://Pak123Pak.github.io/expense-trackingv2/](http
 - **Data Visualization**: View expenses by type or day-by-day breakdown
 - **Responsive Design**: Works on mobile, tablet, and desktop devices
 
-## Recent Updates
-
-- **Enhanced Currency Selection**: Added search functionality to the currency dropdown in expense forms, allowing users to search currencies by code (e.g., USD) or name (e.g., United States Dollar)
-
 ## Technologies Used
 
 - **Frontend**: React.js, Material UI
