@@ -409,7 +409,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                     >
                         {paidByOptions.map(option => (
                             <MenuItem key={option} value={option}>
-                                {option.displayName || option.email || option}
+                                {option}
                             </MenuItem>
                         ))}
                     </Select>
@@ -448,18 +448,18 @@ export default function AddExpenseModal({ open, onClose, paidByOptions, expense 
                             Select individuals to split with:
                         </Typography>
                         <List dense>
-                            {paidByOptions.map((option) => (
-                                <ListItem key={option.email || option} dense>
+                            {paidByOptions.map((email) => (
+                                <ListItem key={email} dense>
                                     <ListItemIcon>
                                         <Checkbox
                                             edge="start"
-                                            checked={individualSplits.includes(option.email || option)}
-                                            onChange={() => handleIndividualSplitChange(option.email || option)}
+                                            checked={individualSplits.includes(email)}
+                                            onChange={() => handleIndividualSplitChange(email)}
                                             tabIndex={-1}
                                             disableRipple
                                         />
                                     </ListItemIcon>
-                                    <ListItemText primary={option.displayName || option.email || option} />
+                                    <ListItemText primary={email} />
                                 </ListItem>
                             ))}
                         </List>

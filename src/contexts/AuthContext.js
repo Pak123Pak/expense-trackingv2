@@ -6,7 +6,7 @@ import {
     signOut,
     updateProfile
 } from 'firebase/auth';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { auth, db } from '../firebase';
 
 const AuthContext = createContext();
@@ -45,28 +45,6 @@ export function AuthProvider({ children }) {
         return signOut(auth);
     }
 
-    // Add function to update display name
-    async function updateDisplayName(newDisplayName) {
-        if (!currentUser) return Promise.reject(new Error('No user is logged in'));
-        
-        try {
-            // Update display name in Firebase Auth
-            await updateProfile(currentUser, { displayName: newDisplayName });
-            
-            // Also update in Firestore
-            const userRef = doc(db, 'users', currentUser.uid);
-            await updateDoc(userRef, { displayName: newDisplayName });
-            
-            // Update local state
-            setCurrentUser({ ...currentUser });
-            
-            return Promise.resolve();
-        } catch (error) {
-            console.error('Error updating display name:', error);
-            return Promise.reject(error);
-        }
-    }
-
     useEffect(() => {
         const unsubscribe = onAuthStateChanged(auth, (user) => {
             setCurrentUser(user);
@@ -80,8 +58,7 @@ export function AuthProvider({ children }) {
         currentUser,
         signup,
         login,
-        logout,
-        updateDisplayName
+        logout
     };
 
     return (

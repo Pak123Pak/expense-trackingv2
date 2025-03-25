@@ -29,13 +29,11 @@ import { useNotification } from '../contexts/NotificationContext';
 export default function SettingsMenu() {
     const [anchorEl, setAnchorEl] = useState(null);
     const [currencyDialogOpen, setCurrencyDialogOpen] = useState(false);
-    const [displayNameDialogOpen, setDisplayNameDialogOpen] = useState(false);
     const [selectedCurrency, setSelectedCurrency] = useState('');
-    const [newDisplayName, setNewDisplayName] = useState('');
     const [saving, setSaving] = useState(false);
     
     const navigate = useNavigate();
-    const { logout, currentUser, updateDisplayName } = useAuth();
+    const { logout } = useAuth();
     const { homeCurrency, availableCurrencies, updateHomeCurrency } = useCurrency();
     const { unreadCount } = useNotification();
     const menuButtonRef = useRef(null);
@@ -44,13 +42,6 @@ export default function SettingsMenu() {
     useEffect(() => {
         setSelectedCurrency(homeCurrency);
     }, [homeCurrency]);
-
-    // Set initial display name from current user
-    useEffect(() => {
-        if (currentUser?.displayName) {
-            setNewDisplayName(currentUser.displayName);
-        }
-    }, [currentUser]);
 
     const handleOpenSettings = (event) => {
         setAnchorEl(event.currentTarget);
@@ -100,33 +91,6 @@ export default function SettingsMenu() {
         }
     };
     
-    const handleOpenDisplayNameDialog = () => {
-        setNewDisplayName(currentUser?.displayName || '');
-        setDisplayNameDialogOpen(true);
-        handleCloseSettings();
-    };
-    
-    const handleCloseDisplayNameDialog = () => {
-        setDisplayNameDialogOpen(false);
-    };
-    
-    const handleSaveDisplayName = async () => {
-        if (!newDisplayName.trim() || newDisplayName === currentUser?.displayName) {
-            handleCloseDisplayNameDialog();
-            return;
-        }
-        
-        setSaving(true);
-        try {
-            await updateDisplayName(newDisplayName.trim());
-            handleCloseDisplayNameDialog();
-        } catch (error) {
-            console.error('Error updating display name:', error);
-        } finally {
-            setSaving(false);
-        }
-    };
-    
     const handleOpenNotifications = () => {
         handleCloseSettings();
         navigate('/notifications');
@@ -169,9 +133,6 @@ export default function SettingsMenu() {
                     </Typography>
                 </MenuItem>
                 <Divider />
-                <MenuItem onClick={handleOpenDisplayNameDialog}>
-                    Change Display Name
-                </MenuItem>
                 <MenuItem onClick={handleOpenCurrencyDialog}>
                     Change Home Currency
                 </MenuItem>
@@ -187,41 +148,6 @@ export default function SettingsMenu() {
                 </MenuItem>
                 <MenuItem onClick={handleLogout}>Logout</MenuItem>
             </Menu>
-            
-            {/* Display Name Dialog */}
-            <Dialog open={displayNameDialogOpen} onClose={handleCloseDisplayNameDialog}>
-                <DialogTitle>Change Display Name</DialogTitle>
-                <DialogContent>
-                    <Typography variant="body2" paragraph>
-                        Update your display name. This name will be visible to other users in your trips.
-                    </Typography>
-                    
-                    <TextField
-                        autoFocus
-                        margin="dense"
-                        id="name"
-                        label="Display Name"
-                        type="text"
-                        fullWidth
-                        value={newDisplayName}
-                        onChange={(e) => setNewDisplayName(e.target.value)}
-                        disabled={saving}
-                    />
-                </DialogContent>
-                <DialogActions>
-                    <Button onClick={handleCloseDisplayNameDialog} disabled={saving}>
-                        Cancel
-                    </Button>
-                    <Button 
-                        onClick={handleSaveDisplayName} 
-                        variant="contained" 
-                        color="primary"
-                        disabled={saving || !newDisplayName.trim()}
-                    >
-                        {saving ? <CircularProgress size={24} /> : 'Save'}
-                    </Button>
-                </DialogActions>
-            </Dialog>
             
             {/* Currency Settings Dialog */}
             <Dialog open={currencyDialogOpen} onClose={handleCloseCurrencyDialog}>

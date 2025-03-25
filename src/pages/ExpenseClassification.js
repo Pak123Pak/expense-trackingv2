@@ -312,7 +312,7 @@ export default function ExpenseClassification() {
                                         <MenuItem value="All">All</MenuItem>
                                         {tripmates.map(tripmate => (
                                             <MenuItem key={tripmate.uid} value={tripmate.email}>
-                                                {tripmate.displayName || tripmate.email} {tripmate.uid === currentUser.uid ? '(You)' : ''}
+                                                {tripmate.email} {tripmate.uid === currentUser.uid ? '(You)' : ''}
                                             </MenuItem>
                                         ))}
                                     </Select>

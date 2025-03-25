@@ -135,8 +135,8 @@ function TripDetailsContent({ tripmates, isCreator }) {
         navigate(`/trips/${tripId}/classification`);
     };
 
-    // Get all tripmates info for paid by options
-    const paidByOptions = tripmates.map(tripmate => tripmate);
+    // Get all email addresses from tripmates for paid by options
+    const paidByOptions = tripmates.map(tripmate => tripmate.email);
 
     return (
         <>
@@ -430,7 +430,7 @@ export default function TripDetails() {
                                 <Chip 
                                     key={tripmate.uid} 
                                     label={tripmate.displayName || tripmate.email} 
-                                    variant={tripmate.uid === currentUser.uid ? "filled" : "outlined"}
+                                    variant="outlined"
                                     color={tripmate.uid === currentUser.uid ? "primary" : "default"}
                                 />
                             ))}

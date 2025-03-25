@@ -65,27 +65,21 @@ export default function TripList() {
                 </Typography>
                 <Divider sx={{ mb: 2 }} />
                 <Grid container spacing={2}>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6}>
                         <Typography variant="body1" component="div" sx={{ mb: 1 }}>
-                            <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>Username:</Box>
-                            {currentUser?.displayName}
-                        </Typography>
-                    </Grid>
-                    <Grid item xs={12} sm={4}>
-                        <Typography variant="body1" component="div" sx={{ mb: 1 }}>
-                            <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>Email:</Box>
+                            <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>User:</Box>
                             {currentUser?.email}
                         </Typography>
                     </Grid>
-                    <Grid item xs={12} sm={4}>
+                    <Grid item xs={12} sm={6}>
                         <Typography variant="body1" component="div">
-                            <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>Currency:</Box>
+                            <Box component="span" sx={{ fontWeight: 'bold', mr: 1 }}>Home Currency:</Box>
                             {homeCurrency.toUpperCase()}
                         </Typography>
                     </Grid>
                 </Grid>
                 <Typography variant="caption" color="text.secondary" sx={{ display: 'block', mt: 2 }}>
-                    You can change your home currency and display name in the settings menu (top right).
+                    You can change your home currency in the settings menu (top right).
                 </Typography>
             </Paper>
             
