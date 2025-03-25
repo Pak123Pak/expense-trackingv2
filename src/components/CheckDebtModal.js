@@ -94,11 +94,9 @@ export default function CheckDebtModal({ open, onClose }) {
     const handleSettleUp = async () => {
         setIsSettling(true);
         try {
-            const success = await settleUpDebts();
-            if (success) {
-                // After settling up, switch to history tab
-                setTabValue(1);
-            }
+            await settleUpDebts();
+            // After settling up, switch to history tab
+            setTabValue(1);
         } catch (error) {
             console.error('Error settling debts:', error);
         } finally {

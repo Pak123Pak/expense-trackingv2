@@ -55,7 +55,6 @@ function TripDetailsContent({ tripmates, isCreator }) {
     const [selectedExpense, setSelectedExpense] = useState(null);
     const [totalAmount, setTotalAmount] = useState(0);
     const [isCalculatingTotal, setIsCalculatingTotal] = useState(true);
-    const [personalExpenses, setPersonalExpenses] = useState({});
     const { currentUser } = useAuth();
     const { homeCurrency, convert, formatCurrency } = useCurrency();
     const navigate = useNavigate();
@@ -70,73 +69,40 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 return;
             }
             
-            setIsCalculatingTotal(true);
-            
-            let total = 0;
-            const personalExpensesMap = {};
-            
-            // Initialize personal expenses for all tripmates
-            tripmates.forEach(tripmate => {
-                personalExpensesMap[tripmate.email] = 0;
-            });
-            
-            for (const expense of expenses) {
-                // Convert each expense to home currency
-                const convertedAmount = await convert(
-                    expense.amount,
-                    expense.currency,
-                    homeCurrency
-                );
+            try {
+                setIsCalculatingTotal(true);
+                let total = 0;
                 
-                // Add to total
-                total += convertedAmount;
+                // Convert each expense to home currency and sum
+                for (const expense of expenses) {
+                    const convertedAmount = await convert(
+                        expense.amount,
+                        expense.currency,
+                        homeCurrency
+                    );
+                    total += convertedAmount;
+                }
                 
-                // Calculate personal expenses based on split method
-                if (expense.splitMethod === "Don't split") {
-                    // If not splitting, expense belongs to the person who paid
-                    if (personalExpensesMap[expense.paidBy] !== undefined) {
-                        personalExpensesMap[expense.paidBy] += convertedAmount;
+                setTotalAmount(total);
+            } catch (error) {
+                console.error('Error calculating total:', error);
+                
+                // Fallback: just sum up without conversion
+                const fallbackTotal = expenses.reduce((sum, expense) => {
+                    if (expense.currency.toLowerCase() === homeCurrency.toLowerCase()) {
+                        return sum + expense.amount;
                     }
-                } 
-                else if (expense.splitMethod === "Everyone") {
-                    // Split evenly among all tripmates
-                    const perPersonAmount = convertedAmount / tripmates.length;
-                    
-                    // Add the split share to each tripmate
-                    tripmates.forEach(tripmate => {
-                        personalExpensesMap[tripmate.email] += perPersonAmount;
-                    });
-                }
-                else if (expense.splitMethod === "Individuals") {
-                    // Handle individual splitting based on selected individuals
-                    const splitWithEmails = expense.splitWith || [];
-                    const splitCount = splitWithEmails.length;
-                    
-                    if (splitCount === 0) {
-                        // If no one is selected to split with, handle like "Don't split"
-                        if (personalExpensesMap[expense.paidBy] !== undefined) {
-                            personalExpensesMap[expense.paidBy] += convertedAmount;
-                        }
-                    } else {
-                        const perPersonAmount = convertedAmount / splitCount;
-                        
-                        // Add the split share to each selected individual
-                        splitWithEmails.forEach(email => {
-                            if (personalExpensesMap[email] !== undefined) {
-                                personalExpensesMap[email] += perPersonAmount;
-                            }
-                        });
-                    }
-                }
+                    return sum;
+                }, 0);
+                
+                setTotalAmount(fallbackTotal);
+            } finally {
+                setIsCalculatingTotal(false);
             }
-            
-            setTotalAmount(total);
-            setPersonalExpenses(personalExpensesMap);
-            setIsCalculatingTotal(false);
         }
         
         calculateTotal();
-    }, [expenses, homeCurrency, convert, tripmates]);
+    }, [expenses, homeCurrency, convert]);
     
     const handleOpenAddExpenseModal = () => {
         setSelectedExpense(null);
@@ -209,47 +175,16 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 <Typography variant="h6" gutterBottom>
                     Trip Summary
                 </Typography>
-                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1, mb: 2 }}>
-                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Typography variant="body1">
-                            Total Expenses: 
+                <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
+                    <Typography variant="body1">
+                        Total Expenses: 
+                    </Typography>
+                    {isCalculatingTotal ? (
+                        <CircularProgress size={20} sx={{ ml: 1 }} />
+                    ) : (
+                        <Typography variant="body1" sx={{ ml: 1, fontWeight: 'bold' }}>
+                            {formatCurrency(totalAmount, homeCurrency)}
                         </Typography>
-                        {isCalculatingTotal ? (
-                            <CircularProgress size={20} sx={{ ml: 1 }} />
-                        ) : (
-                            <Typography variant="body1" sx={{ ml: 1, fontWeight: 'bold' }}>
-                                {formatCurrency(totalAmount, homeCurrency)}
-                            </Typography>
-                        )}
-                    </Box>
-                    
-                    {!isCalculatingTotal && (
-                        <Box sx={{ ml: 1 }}>
-                            <Typography variant="subtitle2" gutterBottom>
-                                Personal Expenses:
-                            </Typography>
-                            <Grid container spacing={1}>
-                                {tripmates.map((tripmate) => (
-                                    <Grid item xs={12} sm={6} md={4} key={tripmate.email}>
-                                        <Box sx={{ 
-                                            display: 'flex',
-                                            justifyContent: 'space-between',
-                                            px: 1,
-                                            borderRadius: 1,
-                                            bgcolor: tripmate.email === currentUser?.email ? 'action.hover' : 'transparent'
-                                        }}>
-                                            <Typography variant="body2" noWrap>
-                                                {tripmate.displayName || tripmate.email}
-                                                {tripmate.email === currentUser?.email && " (You)"}:
-                                            </Typography>
-                                            <Typography variant="body2" sx={{ fontWeight: 'medium' }}>
-                                                {formatCurrency(personalExpenses[tripmate.email] || 0, homeCurrency)}
-                                            </Typography>
-                                        </Box>
-                                    </Grid>
-                                ))}
-                            </Grid>
-                        </Box>
                     )}
                 </Box>
                 
