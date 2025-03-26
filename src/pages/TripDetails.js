@@ -255,56 +255,6 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 
                 <Divider sx={{ my: 2 }} />
                 
-                {/* User Balances */}
-                <Typography variant="subtitle1" gutterBottom>
-                    Individual Balances:
-                </Typography>
-                
-                {debtLoading ? (
-                    <CircularProgress size={20} />
-                ) : (
-                    <Grid container spacing={2}>
-                        {Object.entries(userBalances).map(([userId, balance]) => {
-                            // Find tripmate data for this userId
-                            const tripmate = tripmates.find(tm => tm.uid === userId);
-                            if (!tripmate) return null;
-                            
-                            return (
-                                <Grid item xs={12} sm={6} md={4} key={userId}>
-                                    <Box 
-                                        sx={{ 
-                                            p: 1, 
-                                            borderRadius: 1,
-                                            bgcolor: userId === currentUser.uid ? 'action.hover' : 'transparent'
-                                        }}
-                                    >
-                                        <Typography variant="subtitle2" noWrap>
-                                            {tripmate.displayName}
-                                            {userId === currentUser.uid && " (You)"}
-                                        </Typography>
-                                        <Typography variant="body2" color="text.secondary">
-                                            Paid: {formatCurrency(balance.paid, homeCurrency)}
-                                        </Typography>
-                                        <Typography 
-                                            variant="body2" 
-                                            sx={{ 
-                                                fontWeight: 'medium',
-                                                color: balance.balance > 0 
-                                                    ? 'success.main' 
-                                                    : balance.balance < 0 
-                                                        ? 'error.main' 
-                                                        : 'text.secondary'
-                                            }}
-                                        >
-                                            Balance: {formatCurrency(balance.balance, homeCurrency)}
-                                        </Typography>
-                                    </Box>
-                                </Grid>
-                            );
-                        })}
-                    </Grid>
-                )}
-                
                 <Typography variant="caption" color="text.secondary">
                     All amounts converted to your home currency ({homeCurrency.toUpperCase()})
                 </Typography>
