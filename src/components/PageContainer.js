@@ -1,5 +1,5 @@
 import React from 'react';
-import { Box, Container, Typography, AppBar, Toolbar, IconButton, useTheme, useMediaQuery } from '@mui/material';
+import { Box, Container, Typography, AppBar, Toolbar, IconButton, useTheme, useMediaQuery, LinearProgress } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useNavigate } from 'react-router-dom';
 import SettingsMenu from './SettingsMenu';
@@ -13,6 +13,7 @@ import SettingsMenu from './SettingsMenu';
  * @param {string} props.backTo - Where to navigate on back button press
  * @param {React.ReactNode} props.action - Optional action button for the app bar
  * @param {Object} props.maxWidth - Container max width (xs, sm, md, lg, xl)
+ * @param {boolean} props.loading - Whether the page is loading data
  * @returns {React.ReactNode} - The rendered component
  */
 export default function PageContainer({ 
@@ -21,7 +22,8 @@ export default function PageContainer({
   showBackButton = false, 
   backTo = -1, 
   action,
-  maxWidth = 'lg'
+  maxWidth = 'lg',
+  loading = false
 }) {
   const navigate = useNavigate();
   const theme = useTheme();
@@ -67,6 +69,9 @@ export default function PageContainer({
           
           <SettingsMenu />
         </Toolbar>
+        {loading && (
+          <LinearProgress color="secondary" sx={{ height: 3 }} />
+        )}
       </AppBar>
       
       <Container 

@@ -26,69 +26,82 @@ export function TripProvider({ children }) {
     const [loading, setLoading] = useState(true);
     const { currentUser } = useAuth();
 
-    // Fetch trips whenever the user changes
-    useEffect(() => {
-        async function fetchTrips() {
-            if (!currentUser) {
-                setTrips([]);
-                setLoading(false);
-                return;
-            }
-
-            try {
-                setLoading(true);
-                
-                // Query for trips the user has created
-                const createdTripsQuery = query(
-                    collection(db, 'trips'),
-                    where('creatorId', '==', currentUser.uid),
-                    orderBy('createdAt', 'desc')
-                );
-                
-                // Query for trips where the user is a tripmate but not the creator
-                const invitedTripsQuery = query(
-                    collection(db, 'trips'),
-                    where('tripmates', 'array-contains', currentUser.uid),
-                    where('creatorId', '!=', currentUser.uid)
-                );
-                
-                // Fetch both sets of trips
-                const [createdSnapshot, invitedSnapshot] = await Promise.all([
-                    getDocs(createdTripsQuery),
-                    getDocs(invitedTripsQuery)
-                ]);
-                
-                // Combine and process the results
-                const createdTrips = createdSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    isCreator: true
-                }));
-                
-                const invitedTrips = invitedSnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data(),
-                    isCreator: false
-                }));
-                
-                // Combine both sets of trips and sort by createdAt
-                const allTrips = [...createdTrips, ...invitedTrips].sort((a, b) => {
-                    // Convert Firestore timestamps to dates for comparison
-                    const dateA = a.createdAt?.toDate?.() || new Date(0);
-                    const dateB = b.createdAt?.toDate?.() || new Date(0);
-                    return dateB - dateA;
-                });
-                
-                setTrips(allTrips);
-            } catch (error) {
-                console.error('Error fetching trips:', error);
-            } finally {
-                setLoading(false);
-            }
+    // Function to fetch trips
+    async function fetchTrips() {
+        if (!currentUser) {
+            setTrips([]);
+            setLoading(false);
+            return;
         }
 
+        try {
+            setLoading(true);
+            
+            // Query for trips the user has created
+            const createdTripsQuery = query(
+                collection(db, 'trips'),
+                where('creatorId', '==', currentUser.uid),
+                orderBy('createdAt', 'desc')
+            );
+            
+            // Query for trips where the user is a tripmate but not the creator
+            const invitedTripsQuery = query(
+                collection(db, 'trips'),
+                where('tripmates', 'array-contains', currentUser.uid),
+                where('creatorId', '!=', currentUser.uid)
+            );
+            
+            // Fetch both sets of trips
+            const [createdSnapshot, invitedSnapshot] = await Promise.all([
+                getDocs(createdTripsQuery),
+                getDocs(invitedTripsQuery)
+            ]);
+            
+            // Combine and process the results
+            const createdTrips = createdSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                isCreator: true
+            }));
+            
+            const invitedTrips = invitedSnapshot.docs.map(doc => ({
+                id: doc.id,
+                ...doc.data(),
+                isCreator: false
+            }));
+            
+            // Combine both sets of trips and sort by createdAt
+            const allTrips = [...createdTrips, ...invitedTrips].sort((a, b) => {
+                // Convert Firestore timestamps to dates for comparison
+                const dateA = a.createdAt?.toDate?.() || new Date(0);
+                const dateB = b.createdAt?.toDate?.() || new Date(0);
+                return dateB - dateA;
+            });
+            
+            setTrips(allTrips);
+            return allTrips;
+        } catch (error) {
+            console.error('Error fetching trips:', error);
+            throw error;
+        } finally {
+            setLoading(false);
+        }
+    }
+
+    // Fetch trips whenever the user changes
+    useEffect(() => {
         fetchTrips();
     }, [currentUser]);
+
+    // Function to refresh the trips list
+    async function refreshTrips() {
+        try {
+            return await fetchTrips();
+        } catch (error) {
+            console.error('Error refreshing trips:', error);
+            return null;
+        }
+    }
 
     // Add a new trip
     async function addTrip(name) {
@@ -213,7 +226,8 @@ export function TripProvider({ children }) {
         addTrip,
         deleteTrip,
         addTripmate,
-        getTripDetails
+        getTripDetails,
+        refreshTrips
     };
 
     return (

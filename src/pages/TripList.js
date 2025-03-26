@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
     Box, 
     Button, 
@@ -20,14 +20,21 @@ import AddTripModal from '../components/AddTripModal';
 import PageContainer from '../components/PageContainer';
 import LoadingWrapper from '../components/LoadingWrapper';
 import ErrorDisplay from '../components/ErrorDisplay';
+import { useLocation } from 'react-router-dom';
 
 export default function TripList() {
     const [addTripModalOpen, setAddTripModalOpen] = useState(false);
-    const { trips, loading, error, fetchTrips } = useTrip();
+    const { trips, loading, error, refreshTrips } = useTrip();
     const { currentUser } = useAuth();
     const { homeCurrency } = useCurrency();
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
+    const location = useLocation();
+    
+    // Refresh trips when component mounts or when coming back from another page
+    useEffect(() => {
+        refreshTrips();
+    }, [location.key]); // location.key changes whenever navigation occurs
     
     const handleOpenAddTripModal = () => {
         setAddTripModalOpen(true);
@@ -38,7 +45,10 @@ export default function TripList() {
     };
 
     return (
-        <PageContainer title="My Trips">
+        <PageContainer 
+            title="My Trips"
+            loading={loading} 
+        >
             <Box sx={{ mb: 4 }}>
                 <Button 
                     variant="contained" 
@@ -96,7 +106,7 @@ export default function TripList() {
             {error && (
                 <ErrorDisplay 
                     message={error} 
-                    onRetry={fetchTrips}
+                    onRetry={refreshTrips}
                 />
             )}
             

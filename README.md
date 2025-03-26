@@ -18,6 +18,7 @@ Visit the application at: [https://Pak123Pak.github.io/expense-trackingv2/](http
 - **Data Visualization**: View expenses by type or day-by-day breakdown
 - **User Preferences**: Persistent settings like home currency and expense sorting method
 - **Responsive Design**: Works on mobile, tablet, and desktop devices
+- **Notification Synchronization**: Automatically updates trip list after accepting trip invitations
 
 ## Technologies Used
 
@@ -164,6 +165,7 @@ expense-trackingv2/
 - Add error handling and loading states
 - Clean up UI/UX
 - Deploy to GitHub Pages
+- Add notification synchronization for seamless navigation
 
 ## License
 

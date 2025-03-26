@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
     Container,
@@ -21,13 +21,44 @@ import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import { useNotification } from '../contexts/NotificationContext';
 import { format, isToday, isYesterday, isThisYear } from 'date-fns';
+import { useTrip } from '../contexts/TripContext';
 
 export default function Notifications() {
     const navigate = useNavigate();
     const { notifications, loading, respondToInvitation, deleteNotification } = useNotification();
+    const { refreshTrips } = useTrip();
+    const [pendingOperations, setPendingOperations] = useState(0);
+    const [processingBackNavigation, setProcessingBackNavigation] = useState(false);
     
-    const handleBackClick = () => {
-        navigate(-1);
+    const handleBackClick = async () => {
+        if (pendingOperations > 0) {
+            // If there are pending operations, show loading and wait before navigating
+            setProcessingBackNavigation(true);
+            
+            // Check every 100ms if pending operations are complete
+            const checkInterval = setInterval(() => {
+                if (pendingOperations === 0) {
+                    clearInterval(checkInterval);
+                    // Refresh trips data before navigating
+                    refreshTrips().then(() => {
+                        setProcessingBackNavigation(false);
+                        navigate(-1);
+                    });
+                }
+            }, 100);
+            
+            // Safety timeout - navigate after 5 seconds regardless
+            setTimeout(() => {
+                clearInterval(checkInterval);
+                setProcessingBackNavigation(false);
+                refreshTrips().then(() => {
+                    navigate(-1);
+                });
+            }, 5000);
+        } else {
+            // No pending operations, navigate immediately
+            navigate(-1);
+        }
     };
     
     const formatDate = (date) => {
@@ -44,25 +75,34 @@ export default function Notifications() {
     
     const handleAcceptInvitation = async (notificationId) => {
         try {
+            setPendingOperations(prev => prev + 1);
             await respondToInvitation(notificationId, true);
         } catch (error) {
             console.error('Error accepting invitation:', error);
+        } finally {
+            setPendingOperations(prev => prev - 1);
         }
     };
     
     const handleDeclineInvitation = async (notificationId) => {
         try {
+            setPendingOperations(prev => prev + 1);
             await respondToInvitation(notificationId, false);
         } catch (error) {
             console.error('Error declining invitation:', error);
+        } finally {
+            setPendingOperations(prev => prev - 1);
         }
     };
     
     const handleDeleteNotification = async (notificationId) => {
         try {
+            setPendingOperations(prev => prev + 1);
             await deleteNotification(notificationId);
         } catch (error) {
             console.error('Error deleting notification:', error);
+        } finally {
+            setPendingOperations(prev => prev - 1);
         }
     };
     
@@ -142,8 +182,13 @@ export default function Notifications() {
                         edge="start" 
                         color="inherit" 
                         onClick={handleBackClick}
+                        disabled={processingBackNavigation}
                     >
-                        <ArrowBackIcon />
+                        {processingBackNavigation ? (
+                            <CircularProgress size={24} color="inherit" />
+                        ) : (
+                            <ArrowBackIcon />
+                        )}
                     </IconButton>
                     <Typography variant="h6" sx={{ flexGrow: 1, ml: 1 }}>
                         Notifications
