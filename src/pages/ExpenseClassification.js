@@ -30,7 +30,7 @@ import { db } from '../firebase';
 import { useCurrency } from '../contexts/CurrencyContext';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../contexts/TripContext';
-import { collection, query, getDocs } from 'firebase/firestore';
+import { collection, query, getDocs, getDoc, doc } from 'firebase/firestore';
 import SettingsMenu from '../components/SettingsMenu';
 
 // Register Chart.js components
@@ -75,20 +75,32 @@ export default function ExpenseClassification() {
                 // Get trip details to get tripmates
                 const tripDetails = await getTripDetails(tripId);
                 setTrip(tripDetails);
-                setTripmates(tripDetails.tripmates || []);
+                
+                // Use tripmates array directly from the trip details
+                // It already contains all the user information we need
+                if (tripDetails && tripDetails.tripmates) {
+                    setTripmates(tripDetails.tripmates);
+                } else {
+                    setTripmates([]);
+                }
                 
                 // Fetch all expenses for this trip
-                const expensesQuery = query(collection(db, 'trips', tripId, 'expenses'));
-                const querySnapshot = await getDocs(expensesQuery);
-                const expensesData = querySnapshot.docs.map(doc => ({
-                    id: doc.id,
-                    ...doc.data()
-                }));
-                
-                setExpenses(expensesData);
+                try {
+                    const expensesQuery = query(collection(db, 'trips', tripId, 'expenses'));
+                    const querySnapshot = await getDocs(expensesQuery);
+                    const expensesData = querySnapshot.docs.map(doc => ({
+                        id: doc.id,
+                        ...doc.data()
+                    }));
+                    
+                    setExpenses(expensesData);
+                } catch (expenseError) {
+                    console.error('Error fetching expenses:', expenseError);
+                    setError(`Failed to load expense data: ${expenseError.message}`);
+                }
             } catch (err) {
                 console.error('Error fetching data:', err);
-                setError('Failed to load trip data');
+                setError(`Failed to load trip data: ${err.message}`);
             } finally {
                 setLoading(false);
             }
@@ -103,20 +115,11 @@ export default function ExpenseClassification() {
             if (loading || expenses.length === 0) return;
             
             try {
-                let filteredExpenses = [...expenses];
-                
-                // Filter expenses by selected user if not "All"
-                if (selectedUser !== 'All') {
-                    filteredExpenses = expenses.filter(expense => 
-                        expense.paidBy === selectedUser
-                    );
-                }
-                
                 // Create data based on classification type
                 if (classificationType === 'Type') {
-                    await generateTypeBasedChart(filteredExpenses);
+                    await generateTypeBasedChart(expenses);
                 } else {
-                    await generateDayByDayChart(filteredExpenses);
+                    await generateDayByDayChart(expenses);
                 }
             } catch (err) {
                 console.error('Error generating chart data:', err);
@@ -127,7 +130,73 @@ export default function ExpenseClassification() {
         generateChartData();
     }, [classificationType, selectedUser, expenses, loading, homeCurrency]);
     
-    const generateTypeBasedChart = async (filteredExpenses) => {
+    // Get expense amount based on splitting method and selected user
+    const getUserExpenseAmount = async (expense, userEmail) => {
+        try {
+            if (!expense || !expense.amount || !expense.currency) return 0;
+            
+            const convertedAmount = await convert(
+                expense.amount,
+                expense.currency,
+                homeCurrency
+            );
+            
+            // If "All" users is selected or it's a "Don't split" expense that belongs to selected user
+            if (selectedUser === 'All') {
+                return convertedAmount;
+            }
+            
+            // Handle expense splitting based on the splitMethod
+            if (expense.splitMethod === "Don't split") {
+                // Only the person who paid has this expense
+                return expense.paidBy === selectedUser ? convertedAmount : 0;
+            } else if (expense.splitMethod === "Everyone") {
+                // For "Everyone", split equally among all tripmates
+                if (selectedUser === 'All') {
+                    return convertedAmount;
+                } else if (tripmates.length > 0) {
+                    const perPersonAmount = convertedAmount / tripmates.length;
+                    
+                    if (expense.paidBy === selectedUser) {
+                        // If selected user paid, only count their share
+                        return perPersonAmount;
+                    } else {
+                        // If selected user didn't pay but is part of the trip (which they must be)
+                        // they owe their share to whoever paid
+                        return perPersonAmount;
+                    }
+                }
+                return 0;
+            } else if (expense.splitMethod === "Individuals") {
+                // For "Individuals", check if the user is in the splitWith array
+                const splitWith = expense.splitWith || [];
+                
+                if (selectedUser === 'All') {
+                    return convertedAmount;
+                } else if (splitWith.length > 0) {
+                    const perPersonAmount = convertedAmount / splitWith.length;
+                    
+                    // Check if the selected user is included in the split
+                    if (splitWith.includes(selectedUser)) {
+                        // If user is in the split, they should be counted for their share
+                        return perPersonAmount;
+                    } else {
+                        // User is not part of this expense split
+                        return 0;
+                    }
+                }
+                return 0;
+            }
+            
+            // Default fallback
+            return 0;
+        } catch (err) {
+            console.error(`Error calculating expense amount for ${expense?.id}:`, err);
+            return 0;
+        }
+    };
+    
+    const generateTypeBasedChart = async (allExpenses) => {
         // Group expenses by type
         const expenseTypes = ['Flights', 'Lodging', 'Transit', 'Meal/Drinks', 
                             'Sightseeing', 'Activities', 'Shopping', 'Other'];
@@ -138,16 +207,20 @@ export default function ExpenseClassification() {
             typeAmounts[type] = 0;
         });
         
-        // Calculate total for each type (convert to home currency)
-        for (const expense of filteredExpenses) {
-            const type = expense.type || 'Other';
-            const convertedAmount = await convert(
-                expense.amount,
-                expense.currency,
-                homeCurrency
-            );
-            
-            typeAmounts[type] = (typeAmounts[type] || 0) + convertedAmount;
+        // For each expense
+        for (const expense of allExpenses) {
+            try {
+                const type = expense.type || 'Other';
+                
+                // Calculate the amount to add based on splitting and user selection
+                const amountToAdd = await getUserExpenseAmount(expense, selectedUser);
+                
+                // Add to the correct type
+                typeAmounts[type] = (typeAmounts[type] || 0) + amountToAdd;
+            } catch (err) {
+                console.error(`Error processing expense ${expense.id}:`, err);
+                // Continue to next expense
+            }
         }
         
         // Filter out types with no expenses
@@ -168,30 +241,42 @@ export default function ExpenseClassification() {
         });
     };
     
-    const generateDayByDayChart = async (filteredExpenses) => {
+    const generateDayByDayChart = async (allExpenses) => {
         // Map to store date -> amount pairs
         const dateAmounts = {};
         
         // For each expense, calculate daily amounts based on consecutive days
-        for (const expense of filteredExpenses) {
-            const startDate = new Date(expense.expenseDate);
-            const consecutiveDays = expense.consecutiveDays || 1;
-            const dailyAmount = expense.amount / consecutiveDays;
+        for (const expense of allExpenses) {
+            // Skip expenses with invalid dates
+            if (!expense.expenseDate) continue;
             
-            // Convert to home currency
-            const convertedDailyAmount = await convert(
-                dailyAmount,
-                expense.currency,
-                homeCurrency
-            );
-            
-            // Add amount to each day within the expense's duration
-            for (let i = 0; i < consecutiveDays; i++) {
-                const currentDate = new Date(startDate);
-                currentDate.setDate(startDate.getDate() + i);
+            try {
+                // Calculate the amount to add based on splitting and user selection
+                const totalAmountToAdd = await getUserExpenseAmount(expense, selectedUser);
                 
-                const dateString = currentDate.toISOString().split('T')[0];
-                dateAmounts[dateString] = (dateAmounts[dateString] || 0) + convertedDailyAmount;
+                // If there's no amount to add for this user, skip
+                if (totalAmountToAdd <= 0) continue;
+                
+                // Create a valid date object
+                const startDate = new Date(expense.expenseDate);
+                if (isNaN(startDate.getTime())) continue; // Skip invalid dates
+                
+                const consecutiveDays = expense.consecutiveDays || 1;
+                
+                // Calculate daily amount
+                const dailyAmount = totalAmountToAdd / consecutiveDays;
+                
+                // Add amount to each day within the expense's duration
+                for (let i = 0; i < consecutiveDays; i++) {
+                    const currentDate = new Date(startDate);
+                    currentDate.setDate(startDate.getDate() + i);
+                    
+                    const dateString = currentDate.toISOString().split('T')[0];
+                    dateAmounts[dateString] = (dateAmounts[dateString] || 0) + dailyAmount;
+                }
+            } catch (err) {
+                console.error(`Error processing expense ${expense.id}:`, err);
+                // Continue to next expense
             }
         }
         
@@ -201,8 +286,13 @@ export default function ExpenseClassification() {
         
         // Format dates for display
         const formattedDates = sortedDates.map(date => {
-            const d = new Date(date);
-            return d.toLocaleDateString();
+            try {
+                const d = new Date(date);
+                return d.toLocaleDateString();
+            } catch (err) {
+                console.error(`Error formatting date ${date}:`, err);
+                return date; // Fallback to ISO string format
+            }
         });
         
         setChartData({
