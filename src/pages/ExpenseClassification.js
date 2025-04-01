@@ -199,7 +199,7 @@ export default function ExpenseClassification() {
     const generateTypeBasedChart = async (allExpenses) => {
         // Group expenses by type
         const expenseTypes = ['Flights', 'Lodging', 'Transit', 'Meal/Drinks', 
-                            'Sightseeing', 'Activities', 'Shopping', 'Other'];
+                            'Sightseeing', 'Activities', 'Shopping', 'Groceries', 'Other'];
         
         // Initialize amounts for each type
         const typeAmounts = {};

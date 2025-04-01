@@ -47,6 +47,7 @@ const EXPENSE_TYPES = [
     'Sightseeing',
     'Activities',
     'Shopping',
+    'Groceries',
     'Other'
 ];
 
