@@ -299,15 +299,32 @@ export default function ExpenseItem({ expense, onEdit }) {
                     </Box>
                 )}
                 
-                {/* Delete button (hidden until required) */}
-                <Box sx={{ display: 'none' }}>
+                {/* Delete button */}
+                <Box sx={{ 
+                    display: 'flex', 
+                    justifyContent: 'flex-end',
+                    mt: 1,
+                    position: 'relative'
+                }}>
                     <IconButton 
                         color="error"
                         onClick={handleOpenConfirmDialog}
                         disabled={isDeleting}
+                        size="small"
                     >
                         <DeleteIcon />
                     </IconButton>
+                    {isDeleting && (
+                        <CircularProgress
+                            size={24}
+                            sx={{
+                                position: 'absolute',
+                                top: '50%',
+                                right: '12px',
+                                marginTop: '-12px',
+                            }}
+                        />
+                    )}
                 </Box>
             </Paper>
 
