@@ -107,66 +107,6 @@ expense-trackingv2/
 └── README.md            # Project documentation
 ```
 
-## Development Phases
-
-### Phase 1: Project Setup and Authentication ✅
-- Set up the project structure
-- Implement Firebase configuration
-- Create login and registration functionality
-- Set up basic routing
-
-### Phase 2: Trip Management ✅
-- Create the Trip List page
-- Implement Add New Trip functionality
-- Implement Delete Trip functionality
-- Set up trip storage in Firestore
-
-### Phase 3: Basic Expense Management ✅
-- Create the Trip Details page
-- Implement Add New Expense functionality with basic fields
-- Implement the expense list view
-- Implement Delete Expense functionality
-
-### Phase 4: Advanced Expense Features ✅
-- Add the remaining expense fields (ratings, photos, consecutive days)
-- Implement the Edit Expense functionality
-- Add sorting options for expenses
-
-### Phase 5: Currency Conversion ✅
-- Implement home currency settings
-- Set up currency conversion API integration
-- Update expense display to show converted amounts
-
-### Phase 6: Trip Sharing and Collaboration ✅
-- Implement the Add Tripmate functionality
-- Create notification system for trip invitations
-- Set up sharing permissions for trips
-
-### Phase 7: Expense Splitting and Debt Tracking ✅
-- Implement expense splitting functionality
-- Create the Check Debt feature
-- Implement Settle Up functionality
-- Add Debt History
-
-### Phase 8: Data Visualization ✅
-- Implement the Expense Classification page
-- Create charts for expense types
-- Create charts for day-by-day expenses
-- Add filtering options for charts
-
-### Phase 9: User Preference Enhancements ✅
-- Implement persistent expense sorting preference
-- Save user sorting preference to Firestore
-- Apply consistent sorting across all trips
-- Add responsive feedback for preference changes
-
-### Phase 10: Final Touches and Deployment ✅
-- Implement responsive design
-- Add error handling and loading states
-- Clean up UI/UX
-- Deploy to GitHub Pages
-- Add notification synchronization for seamless navigation
-
 ## License
 
 This project is licensed under the MIT License.
