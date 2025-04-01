@@ -424,7 +424,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions = [], exp
                     value={formData.description}
                     onChange={handleChange}
                     sx={{ mt: 2 }}
-                    placeholder={formData.type ? `Details about the ${formData.type.toLowerCase()}` : 'Details about the expense'}
+                    placeholder={formData.type ? `If empty, '${formData.type}' will be used as description` : 'If empty, expense type will be used as description'}
                 />
                 
                 {/* Paid By */}

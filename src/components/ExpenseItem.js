@@ -161,7 +161,7 @@ export default function ExpenseItem({ expense, onEdit }) {
                 {/* First Line: Description and Amount */}
                 <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                     <Typography variant="h6">
-                        {expense.description}
+                        {expense.description ? expense.description : expense.type}
                     </Typography>
                     <Typography variant="h6" sx={{ fontWeight: 'bold' }}>
                         {isLoadingAmount ? (
