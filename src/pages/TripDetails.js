@@ -17,13 +17,15 @@ import {
     IconButton,
     Chip,
     Grid,
-    Divider
+    Divider,
+    Badge
 } from '@mui/material';
 import AddIcon from '@mui/icons-material/Add';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PeopleIcon from '@mui/icons-material/People';
 import MoneyIcon from '@mui/icons-material/Money';
 import AnalyticsIcon from '@mui/icons-material/Analytics';
+import FilterListIcon from '@mui/icons-material/FilterList';
 import { db } from '../firebase';
 import { useAuth } from '../contexts/AuthContext';
 import { useTrip } from '../contexts/TripContext';
@@ -33,6 +35,7 @@ import { useCurrency } from '../contexts/CurrencyContext';
 import AddExpenseModal from '../components/AddExpenseModal';
 import AddTripmateModal from '../components/AddTripmateModal';
 import CheckDebtModal from '../components/CheckDebtModal';
+import ExpenseFilterModal from '../components/ExpenseFilterModal';
 import ExpenseItem from '../components/ExpenseItem';
 import SettingsMenu from '../components/SettingsMenu';
 
@@ -48,10 +51,11 @@ const SORT_OPTIONS = [
 
 // Inner component that uses the ExpenseContext and DebtContext
 function TripDetailsContent({ tripmates, isCreator }) {
-    const { expenses, loading, sortMethod, changeSortMethod } = useExpense();
+    const { expenses, loading, sortMethod, changeSortMethod, filters, updateFilters, isFiltering } = useExpense();
     const { userBalances, loading: debtLoading } = useDebt();
     const [addExpenseModalOpen, setAddExpenseModalOpen] = useState(false);
     const [checkDebtModalOpen, setCheckDebtModalOpen] = useState(false);
+    const [filterModalOpen, setFilterModalOpen] = useState(false);
     const [selectedExpense, setSelectedExpense] = useState(null);
     const [totalAmount, setTotalAmount] = useState(0);
     const [isCalculatingTotal, setIsCalculatingTotal] = useState(true);
@@ -165,12 +169,27 @@ function TripDetailsContent({ tripmates, isCreator }) {
         setCheckDebtModalOpen(false);
     };
 
+    const handleOpenFilterModal = () => {
+        setFilterModalOpen(true);
+    };
+    
+    const handleCloseFilterModal = () => {
+        setFilterModalOpen(false);
+    };
+    
+    const handleApplyFilters = (newFilters) => {
+        updateFilters(newFilters);
+    };
+
     const handleOpenClassification = () => {
         navigate(`/trips/${tripId}/classification`);
     };
 
     // Get all email addresses from tripmates for paid by options
     const paidByOptions = tripmates.map(tripmate => tripmate.email);
+
+    // Check if filters are active
+    const areFiltersActive = filters && filters.filterMode !== 'All';
 
     return (
         <>
@@ -260,46 +279,148 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 </Typography>
             </Paper>
             
-            {/* Sort Control */}
-            <Box sx={{ mb: 3 }}>
-                <FormControl variant="outlined" sx={{ minWidth: 250 }}>
-                    <InputLabel>Sort by</InputLabel>
-                    <Select
-                        value={sortMethod}
-                        onChange={handleSortChange}
-                        label="Sort by"
+            {/* Sort and Filter Options */}
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+                <Typography variant="h6">
+                    Expenses
+                    {loading && <CircularProgress size={20} sx={{ ml:.5 }} />}
+                </Typography>
+                
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                    {/* Filter Button */}
+                    <Button
+                        variant="outlined"
+                        color={areFiltersActive ? "primary" : "inherit"}
+                        startIcon={
+                            <Badge
+                                color="primary"
+                                variant="dot"
+                                invisible={!areFiltersActive}
+                            >
+                                <FilterListIcon />
+                            </Badge>
+                        }
+                        onClick={handleOpenFilterModal}
+                        size="small"
                     >
-                        {SORT_OPTIONS.map(option => (
-                            <MenuItem key={option.value} value={option.value}>
-                                {option.label}
-                            </MenuItem>
-                        ))}
-                    </Select>
-                </FormControl>
+                        Filter
+                    </Button>
+                    
+                    {/* Sort Dropdown */}
+                    <FormControl size="small" sx={{ minWidth: 200 }}>
+                        <InputLabel id="sort-select-label">Sort by</InputLabel>
+                        <Select
+                            labelId="sort-select-label"
+                            id="sort-select"
+                            value={sortMethod}
+                            label="Sort by"
+                            onChange={handleSortChange}
+                        >
+                            {SORT_OPTIONS.map(option => (
+                                <MenuItem key={option.value} value={option.value}>
+                                    {option.label}
+                                </MenuItem>
+                            ))}
+                        </Select>
+                    </FormControl>
+                </Box>
             </Box>
             
-            {/* Expenses List */}
-            {loading ? (
-                <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                    <CircularProgress />
+            {/* Filter Indicator */}
+            {areFiltersActive && (
+                <Box sx={{ mb: 2 }}>
+                    <Paper
+                        variant="outlined"
+                        sx={{ 
+                            p: 1, 
+                            display: 'flex', 
+                            alignItems: 'center', 
+                            justifyContent: 'space-between',
+                            bgcolor: 'primary.50'
+                        }}
+                    >
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body2" fontWeight="medium">
+                                Active Filters:
+                            </Typography>
+                            
+                            {filters.amount?.enabled && (
+                                <Chip 
+                                    size="small"
+                                    label={`Amount: ${filters.amount.min || '0'} - ${filters.amount.max || '∞'} ${homeCurrency.toUpperCase()}`}
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            )}
+                            
+                            {filters.type?.enabled && filters.type.selected.length > 0 && (
+                                <Chip 
+                                    size="small"
+                                    label={`Types: ${filters.type.selected.join(', ')}`}
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            )}
+                            
+                            {filters.paidBy?.enabled && filters.paidBy.selected && (
+                                <Chip 
+                                    size="small"
+                                    label={`Paid by: ${filters.paidBy.selected}`}
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            )}
+                            
+                            {filters.expenseDate?.enabled && filters.expenseDate.date && (
+                                <Chip 
+                                    size="small"
+                                    label={`Date: ${new Date(filters.expenseDate.date).toLocaleDateString()}`}
+                                    color="primary"
+                                    variant="outlined"
+                                />
+                            )}
+                        </Box>
+                        
+                        <Button 
+                            size="small" 
+                            onClick={() => updateFilters({ filterMode: 'All' })}
+                            color="primary"
+                        >
+                            Clear Filters
+                        </Button>
+                    </Paper>
                 </Box>
-            ) : expenses.length > 0 ? (
-                <Box>
-                    {expenses.map((expense) => (
+            )}
+            
+            {/* Filter Results Message */}
+            {areFiltersActive && expenses.length === 0 && !loading && !isFiltering && (
+                <Alert severity="info" sx={{ mb: 2 }}>
+                    No expenses match the current filters. Try adjusting your filters or clear them to see all expenses.
+                </Alert>
+            )}
+            
+            {/* Expense List */}
+            {expenses.length > 0 ? (
+                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
+                    {expenses.map(expense => (
                         <ExpenseItem 
                             key={expense.id} 
                             expense={expense} 
-                            onEdit={handleEditExpense} 
+                            onClick={() => handleEditExpense(expense)}
                         />
                     ))}
                 </Box>
             ) : (
-                <Alert severity="info" sx={{ mt: 2 }}>
-                    You don't have any expenses yet. Create your first expense using the "+ Add new expense" button.
-                </Alert>
+                !loading && !isFiltering && !areFiltersActive && (
+                    <Paper sx={{ p: 3, textAlign: 'center' }}>
+                        <Typography variant="body1" color="text.secondary">
+                            No expenses yet. Click "Add new expense" to get started.
+                        </Typography>
+                    </Paper>
+                )
             )}
             
-            {/* Add/Edit Expense Modal */}
+            {/* Modals */}
             <AddExpenseModal 
                 open={addExpenseModalOpen} 
                 onClose={handleCloseAddExpenseModal} 
@@ -307,10 +428,18 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 expense={selectedExpense}
             />
             
-            {/* Check Debt Modal */}
-            <CheckDebtModal 
-                open={checkDebtModalOpen} 
-                onClose={handleCloseCheckDebtModal} 
+            <CheckDebtModal
+                open={checkDebtModalOpen}
+                onClose={handleCloseCheckDebtModal}
+                tripId={tripId}
+            />
+            
+            <ExpenseFilterModal
+                open={filterModalOpen}
+                onClose={handleCloseFilterModal}
+                onApplyFilter={handleApplyFilters}
+                paidByOptions={paidByOptions}
+                currentFilters={filters}
             />
         </>
     );

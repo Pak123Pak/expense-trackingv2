@@ -23,10 +23,13 @@ export function useExpense() {
 
 export function ExpenseProvider({ children, tripId }) {
     const [expenses, setExpenses] = useState([]);
+    const [filteredExpenses, setFilteredExpenses] = useState([]);
     const [loading, setLoading] = useState(true);
     const { currentUser, updateExpenseSortPreference } = useAuth();
-    const { expenseSortPreference } = useCurrency();
+    const { expenseSortPreference, homeCurrency, convert } = useCurrency();
     const [sortMethod, setSortMethod] = useState(expenseSortPreference);
+    const [filters, setFilters] = useState({ filterMode: 'All' });
+    const [isFiltering, setIsFiltering] = useState(false);
     
     // Update sort method whenever the preference from CurrencyContext changes
     useEffect(() => {
@@ -40,6 +43,7 @@ export function ExpenseProvider({ children, tripId }) {
         async function fetchExpenses() {
             if (!currentUser || !tripId) {
                 setExpenses([]);
+                setFilteredExpenses([]);
                 setLoading(false);
                 return;
             }
@@ -59,6 +63,9 @@ export function ExpenseProvider({ children, tripId }) {
                 // Apply sorting based on sortMethod
                 const sortedExpenses = sortExpenses(expensesData, sortMethod);
                 setExpenses(sortedExpenses);
+                
+                // Apply any existing filters
+                await applyFilters(sortedExpenses, filters);
             } catch (error) {
                 console.error('Error fetching expenses:', error);
             } finally {
@@ -99,6 +106,111 @@ export function ExpenseProvider({ children, tripId }) {
         }
     }
 
+    // Apply filters to expenses
+    async function applyFilters(expensesToFilter, currentFilters) {
+        if (!currentFilters || currentFilters.filterMode === 'All') {
+            setFilteredExpenses(expensesToFilter);
+            setIsFiltering(false);
+            return;
+        }
+        
+        setIsFiltering(true);
+        
+        try {
+            // Start with all expenses
+            let result = [...expensesToFilter];
+            
+            // Filter by amount (in home currency)
+            if (currentFilters.amount?.enabled) {
+                const min = currentFilters.amount.min ? parseFloat(currentFilters.amount.min) : -Infinity;
+                const max = currentFilters.amount.max ? parseFloat(currentFilters.amount.max) : Infinity;
+                
+                // We need to filter after converting each expense to home currency
+                const filteredByAmount = [];
+                
+                for (const expense of result) {
+                    try {
+                        // Convert expense amount to home currency for filtering
+                        const convertedAmount = await convert(
+                            expense.amount,
+                            expense.currency,
+                            homeCurrency
+                        );
+                        
+                        if (convertedAmount >= min && convertedAmount <= max) {
+                            filteredByAmount.push(expense);
+                        }
+                    } catch (error) {
+                        console.error('Error converting amount for filtering:', error);
+                    }
+                }
+                
+                result = filteredByAmount;
+            }
+            
+            // Filter by type
+            if (currentFilters.type?.enabled && currentFilters.type.selected.length > 0) {
+                result = result.filter(expense => 
+                    currentFilters.type.selected.includes(expense.type)
+                );
+            }
+            
+            // Filter by paid by
+            if (currentFilters.paidBy?.enabled && currentFilters.paidBy.selected) {
+                result = result.filter(expense => 
+                    expense.paidBy === currentFilters.paidBy.selected
+                );
+            }
+            
+            // Filter by expense date, considering consecutive days
+            if (currentFilters.expenseDate?.enabled && currentFilters.expenseDate.date) {
+                const filterDate = new Date(currentFilters.expenseDate.date);
+                // Reset the time to 00:00:00 for consistent comparison
+                filterDate.setHours(0, 0, 0, 0);
+                
+                result = result.filter(expense => {
+                    if (!expense.expenseDate) return false;
+                    
+                    const expenseDate = new Date(expense.expenseDate);
+                    // Reset the time to 00:00:00 for consistent comparison
+                    expenseDate.setHours(0, 0, 0, 0);
+                    
+                    // Check if it's the exact same date
+                    if (expenseDate.getTime() === filterDate.getTime()) {
+                        return true;
+                    }
+                    
+                    // Check for consecutive days
+                    const consecutiveDays = expense.consecutiveDays || 1;
+                    if (consecutiveDays > 1) {
+                        // Create a date range
+                        const endDate = new Date(expenseDate);
+                        endDate.setDate(expenseDate.getDate() + (consecutiveDays - 1));
+                        
+                        // Check if the filter date falls within the expense date range
+                        return filterDate >= expenseDate && filterDate <= endDate;
+                    }
+                    
+                    return false;
+                });
+            }
+            
+            setFilteredExpenses(result);
+        } catch (error) {
+            console.error('Error applying filters:', error);
+            // If something goes wrong, just show all expenses
+            setFilteredExpenses(expensesToFilter);
+        } finally {
+            setIsFiltering(false);
+        }
+    }
+
+    // Update filters
+    async function updateFilters(newFilters) {
+        setFilters(newFilters);
+        await applyFilters(expenses, newFilters);
+    }
+
     // Add a new expense
     async function addExpense(expenseData) {
         if (!currentUser || !tripId) return null;
@@ -123,6 +235,9 @@ export function ExpenseProvider({ children, tripId }) {
             const updatedExpenses = [expenseWithId, ...expenses];
             const sortedExpenses = sortExpenses(updatedExpenses, sortMethod);
             setExpenses(sortedExpenses);
+            
+            // Re-apply filters
+            await applyFilters(sortedExpenses, filters);
             
             return expenseWithId;
         } catch (error) {
@@ -161,6 +276,9 @@ export function ExpenseProvider({ children, tripId }) {
             const sortedExpenses = sortExpenses(updatedExpenses, sortMethod);
             setExpenses(sortedExpenses);
             
+            // Re-apply filters
+            await applyFilters(sortedExpenses, filters);
+            
             return true;
         } catch (error) {
             console.error('Error updating expense:', error);
@@ -174,7 +292,12 @@ export function ExpenseProvider({ children, tripId }) {
 
         try {
             await deleteDoc(doc(db, 'trips', tripId, 'expenses', expenseId));
-            setExpenses(prevExpenses => prevExpenses.filter(expense => expense.id !== expenseId));
+            const updatedExpenses = expenses.filter(expense => expense.id !== expenseId);
+            setExpenses(updatedExpenses);
+            
+            // Re-apply filters
+            await applyFilters(updatedExpenses, filters);
+            
             return true;
         } catch (error) {
             console.error('Error deleting expense:', error);
@@ -197,13 +320,17 @@ export function ExpenseProvider({ children, tripId }) {
     }
 
     const value = {
-        expenses,
+        expenses: filteredExpenses, // Now we return filtered expenses instead of all expenses
+        allExpenses: expenses, // Add all expenses for reference if needed
         loading,
+        isFiltering,
         addExpense,
         updateExpense,
         deleteExpense,
         sortMethod,
-        changeSortMethod
+        changeSortMethod,
+        filters,
+        updateFilters
     };
 
     return (

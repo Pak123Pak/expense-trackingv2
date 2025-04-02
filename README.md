@@ -17,6 +17,7 @@ Visit the application at: [https://Pak123Pak.github.io/expense-trackingv2/](http
 - **Debt Tracking**: Calculate and settle debts between trip mates
 - **Data Visualization**: View expenses by type or day-by-day breakdown
 - **User Preferences**: Persistent settings like home currency and expense sorting method
+- **Advanced Filtering**: Filter expenses by amount range, type, paid by, and date with multiple criteria
 - **Responsive Design**: Works on mobile, tablet, and desktop devices
 - **Notification Synchronization**: Automatically updates trip list after accepting trip invitations
 
