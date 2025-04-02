@@ -191,6 +191,12 @@ function TripDetailsContent({ tripmates, isCreator }) {
     // Check if filters are active
     const areFiltersActive = filters && filters.filterMode !== 'All';
 
+    // Helper function to get display name for an email
+    const getDisplayNameForEmail = (email) => {
+        const tripmate = tripmates.find(tm => tm.email === email);
+        return tripmate ? (tripmate.displayName || email) : email;
+    };
+
     return (
         <>
             {/* Action Buttons */}
@@ -365,7 +371,7 @@ function TripDetailsContent({ tripmates, isCreator }) {
                             {filters.paidBy?.enabled && filters.paidBy.selected && (
                                 <Chip 
                                     size="small"
-                                    label={`Paid by: ${filters.paidBy.selected}`}
+                                    label={`Paid by: ${getDisplayNameForEmail(filters.paidBy.selected)}`}
                                     color="primary"
                                     variant="outlined"
                                 />
@@ -438,7 +444,7 @@ function TripDetailsContent({ tripmates, isCreator }) {
                 open={filterModalOpen}
                 onClose={handleCloseFilterModal}
                 onApplyFilter={handleApplyFilters}
-                paidByOptions={paidByOptions}
+                tripmates={tripmates}
                 currentFilters={filters}
             />
         </>

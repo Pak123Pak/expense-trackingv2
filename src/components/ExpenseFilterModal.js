@@ -34,7 +34,7 @@ export default function ExpenseFilterModal({
     open, 
     onClose, 
     onApplyFilter, 
-    paidByOptions = [],
+    tripmates = [],
     currentFilters
 }) {
     const { homeCurrency, formatCurrency } = useCurrency();
@@ -198,6 +198,12 @@ export default function ExpenseFilterModal({
         });
     };
 
+    // Helper function to get display name or email
+    const getDisplayName = (email) => {
+        const tripmate = tripmates.find(tm => tm.email === email);
+        return tripmate ? (tripmate.displayName || email) : email;
+    };
+
     // Calculate if any custom filters are applied
     const hasCustomFilters = 
         filters.amount.enabled || 
@@ -349,9 +355,9 @@ export default function ExpenseFilterModal({
                                         label="Paid By"
                                         onChange={handlePaidByChange}
                                     >
-                                        {paidByOptions.map((email) => (
-                                            <MenuItem key={email} value={email}>
-                                                {email}
+                                        {tripmates.map((tripmate) => (
+                                            <MenuItem key={tripmate.email} value={tripmate.email}>
+                                                {tripmate.displayName || tripmate.email}
                                             </MenuItem>
                                         ))}
                                     </Select>
@@ -411,7 +417,7 @@ export default function ExpenseFilterModal({
                                     )}
                                     {filters.paidBy.enabled && filters.paidBy.selected && (
                                         <Chip 
-                                            label={`Paid by: ${filters.paidBy.selected}`} 
+                                            label={`Paid by: ${getDisplayName(filters.paidBy.selected)}`} 
                                             onDelete={() => handleFilterToggle('paidBy')}
                                             color="primary"
                                         />
