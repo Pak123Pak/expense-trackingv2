@@ -412,7 +412,7 @@ function TripDetailsContent({ tripmates, isCreator }) {
                         <ExpenseItem 
                             key={expense.id} 
                             expense={expense} 
-                            onClick={() => handleEditExpense(expense)}
+                            onEdit={handleEditExpense}
                         />
                     ))}
                 </Box>
