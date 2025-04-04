@@ -25,7 +25,7 @@ export default function Register() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        console.log("Version 6");
+        console.log("Version 7");
     }, []);
 
     async function handleSubmit(e) {

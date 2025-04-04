@@ -176,12 +176,7 @@ export function DebtProvider({ children, tripId }) {
                     const convertedAmount = await convert(amount, currency, homeCurrency);
                     
                     // Handle different split methods
-                    if (expense.splitMethod === "Don't split") {
-                        // No debt calculation needed for "Don't split"
-                        userBalanceMap[paidByUserId].paid += convertedAmount;
-                        userBalanceMap[paidByUserId].balance += convertedAmount;
-                    } 
-                    else if (expense.splitMethod === "Everyone") {
+                    if (expense.splitMethod === "Everyone") {
                         // Split evenly among all tripmates
                         const perPersonAmount = convertedAmount / tripmates.length;
                         
@@ -238,6 +233,14 @@ export function DebtProvider({ children, tripId }) {
                         
                         // The payer paid the full amount
                         userBalanceMap[paidByUserId].paid += convertedAmount;
+
+                        // Check if the payer is included in the split
+                        const payerIncludedInSplit = splitWithUserIds.includes(paidByUserId);
+                        
+                        // If payer is not in the split, they paid for others but don't owe anything
+                        if (!payerIncludedInSplit) {
+                            userBalanceMap[paidByUserId].balance += convertedAmount;
+                        }
                         
                         // Calculate debts for each person in the split
                         for (const userId of splitWithUserIds) {
