@@ -31,6 +31,7 @@ export default function ExpenseItem({ expense, onEdit }) {
     const [formattedAmount, setFormattedAmount] = useState('');
     const [isLoadingAmount, setIsLoadingAmount] = useState(true);
     const [paidByUser, setPaidByUser] = useState(null);
+    const [splitWithUsers, setSplitWithUsers] = useState([]);
     
     const { deleteExpense } = useExpense();
     const { homeCurrency, formatWithConversion, formatCurrency } = useCurrency();
@@ -58,31 +59,42 @@ export default function ExpenseItem({ expense, onEdit }) {
         formatAmount();
     }, [expense.amount, expense.currency, homeCurrency, formatWithConversion, formatCurrency]);
 
-    // Get display name for paid by user
+    // Get display name for paid by user and splitWith users
     useEffect(() => {
-        async function fetchPaidByUser() {
+        async function fetchUserDetails() {
             try {
-                if (!expense.paidBy) return;
+                if (!expense.tripId) return;
                 
                 // Get trip details which includes tripmates
                 const tripDetails = await getTripDetails(expense.tripId);
                 if (!tripDetails || !tripDetails.tripmates) return;
                 
-                // Find the tripmate with matching email
-                const tripmate = tripDetails.tripmates.find(tm => tm.email === expense.paidBy);
-                if (tripmate) {
-                    setPaidByUser(tripmate.displayName || tripmate.email);
-                } else {
-                    setPaidByUser(expense.paidBy);
+                // Find the tripmate with matching email for paidBy
+                if (expense.paidBy) {
+                    const paidByTripmate = tripDetails.tripmates.find(tm => tm.email === expense.paidBy);
+                    if (paidByTripmate) {
+                        setPaidByUser(paidByTripmate.displayName || paidByTripmate.email);
+                    } else {
+                        setPaidByUser(expense.paidBy);
+                    }
+                }
+                
+                // Find display names for splitWith users if splitMethod is Individuals
+                if (expense.splitMethod === 'Individuals' && expense.splitWith && expense.splitWith.length > 0) {
+                    const splitWithNames = expense.splitWith.map(email => {
+                        const tripmate = tripDetails.tripmates.find(tm => tm.email === email);
+                        return tripmate ? (tripmate.displayName || email) : email;
+                    });
+                    setSplitWithUsers(splitWithNames);
                 }
             } catch (error) {
-                console.error('Error fetching paid by user:', error);
+                console.error('Error fetching user details:', error);
                 setPaidByUser(expense.paidBy);
             }
         }
         
-        fetchPaidByUser();
-    }, [expense.paidBy, expense.tripId, getTripDetails]);
+        fetchUserDetails();
+    }, [expense.paidBy, expense.splitWith, expense.tripId, expense.splitMethod, getTripDetails]);
 
     // Format the expense date
     const formatDate = (dateString) => {
@@ -194,7 +206,9 @@ export default function ExpenseItem({ expense, onEdit }) {
                         Paid by: {paidByUser || 'Loading...'}
                     </Typography>
                     <Typography variant="body2" color="text.secondary">
-                        Split: {expense.splitMethod}
+                        Split: {expense.splitMethod === 'Individuals' && splitWithUsers.length > 0 ? 
+                            splitWithUsers.join(', ') : 
+                            expense.splitMethod}
                     </Typography>
                 </Box>
                 
