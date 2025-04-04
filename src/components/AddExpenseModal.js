@@ -323,7 +323,7 @@ export default function AddExpenseModal({ open, onClose, paidByOptions = [], exp
             <DialogContent>
                 {/* Currency and Amount */}
                 <Grid container spacing={2} sx={{ mt: 0.5 }}>
-                    <Grid item xs={5}>
+                    <Grid item xs={12} sm={5}>
                         <FormControl 
                             fullWidth 
                             error={!!errors.currency}
@@ -368,11 +368,11 @@ export default function AddExpenseModal({ open, onClose, paidByOptions = [], exp
                                     availableCurrencies[option]?.toLowerCase().includes(filter)
                                 );
                             }}
-                            sx={{ width: 200 }}
+                            fullWidth
                         />
                         </FormControl>
                     </Grid>
-                    <Grid item xs={7}>
+                    <Grid item xs={12} sm={7}>
                         <TextField
                             fullWidth
                             label="Amount"
