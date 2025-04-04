@@ -1,8 +1,6 @@
 import axios from 'axios';
 
 // Free API key from ExchangeRate-API (limited to 1500 requests per month)
-// We'll use this for simplicity in this example
-// In a production app, you might want to use a different API or upgrade to a paid plan
 const API_URL = 'https://open.er-api.com/v6/latest';
 
 // Cache exchange rates to reduce API calls
@@ -85,7 +83,6 @@ export const getAvailableCurrencies = async () => {
     const rates = await getExchangeRates('USD');
     
     // Create a map of currency codes to names
-    // This is a simplified version, in a real app you might want to use a more complete list
     const currencyNames = {
       USD: 'US Dollar',
       EUR: 'Euro',

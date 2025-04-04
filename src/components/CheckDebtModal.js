@@ -1,15 +1,3 @@
-/**
- * CheckDebtModal.js
- * 
- * This component displays debt information for a trip, including:
- * - A summary of the user's balance
- * - Current debts (who owes what to whom)
- * - Debt history (settled debts)
- * - A "Settle Up" button to clear all current debts
- * 
- * Implemented in Phase 7 to enable debt tracking and settlement.
- */
-
 import React, { useState, useEffect } from 'react';
 import { 
     Dialog, 

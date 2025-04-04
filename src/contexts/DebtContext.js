@@ -1,13 +1,3 @@
-/**
- * DebtContext.js
- * 
- * This context manages debt-related operations for the expense tracker app.
- * It handles calculating debts based on expenses and different splitting methods,
- * tracks user balances, and provides functionality to settle debts.
- * 
- * Implemented in Phase 7 to enable expense splitting and debt tracking.
- */
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
     collection, 

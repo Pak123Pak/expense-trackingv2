@@ -39,7 +39,7 @@ export default function PageContainer({
   
   return (
     <Box sx={{ display: 'flex', flexDirection: 'column', minHeight: '100vh' }}>
-      <AppBar position="static" color="primary" elevation={1}>
+      <AppBar position="fixed" color="primary" elevation={2} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1 }}>
         <Toolbar>
           {showBackButton && (
             <IconButton 
@@ -78,7 +78,8 @@ export default function PageContainer({
         maxWidth={maxWidth} 
         sx={{ 
           py: { xs: 2, sm: 3, md: 4 },
-          flex: 1
+          flex: 1,
+          mt: '64px'
         }}
       >
         {children}

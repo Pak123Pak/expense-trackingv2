@@ -320,7 +320,7 @@ export function ExpenseProvider({ children, tripId }) {
     }
 
     const value = {
-        expenses: filteredExpenses, // Now we return filtered expenses instead of all expenses
+        expenses: filteredExpenses, // Now return filtered expenses instead of all expenses
         allExpenses: expenses, // Add all expenses for reference if needed
         loading,
         isFiltering,

@@ -541,7 +541,7 @@ export default function TripDetails() {
 
     return (
         <>
-            <AppBar position="static" color="default">
+            <AppBar position="fixed" color="default" elevation={2} sx={{ zIndex: (theme) => theme.zIndex.drawer + 1, width: '100%' }}>
                 <Toolbar>
                     <IconButton
                         edge="start"
@@ -568,7 +568,7 @@ export default function TripDetails() {
                 </Toolbar>
             </AppBar>
             
-            <Container sx={{ mt: 4 }}>
+            <Container sx={{ mt: '64px', pt: 2 }}>
                 {/* Display tripmates if there are any */}
                 {tripmates.length > 1 && (
                     <Box sx={{ mb: 3 }}>
